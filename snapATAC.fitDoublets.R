@@ -50,7 +50,7 @@ find.cutoff <- function(model, proba=0.5, i=index.lower) {
         proba - (model$lambda[i]*dnorm(x, model$mu[i], model$sigma[i]) /
                      (model$lambda[1]*dnorm(x, model$mu[1], model$sigma[1]) + model$lambda[2]*dnorm(x, model$mu[2], model$sigma[2])))
         }
-        return(uniroot(f=f, lower=0, upper=1)$root)  # Careful with division by zero if changing lower and upper
+        return(uniroot(f=f, lower=0.2, upper=1)$root)  # Careful with division by zero if changing lower and upper
 }
 
 cutoffs <- find.cutoff(mixmdl, proba=0.5)

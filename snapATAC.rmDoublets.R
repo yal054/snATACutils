@@ -26,6 +26,8 @@ suppressPackageStartupMessages(library("SnapATAC"))
 library("tictoc")
 library("umap")
 
+.libPaths("/home/yangli1/apps/anaconda3/envs/r_env/lib/R/library")
+
 RDataF = as.character(args$RData)
 mat = args$mat
 path_to_python = args$path_to_python
@@ -380,17 +382,17 @@ plotValue.default <- function(
 
 load(RDataF)
 
-if(mat == "bmat"){
+#if(mat == "bmat"){
 
-rmBmatFromSnap(x.sp)
+#rmBmatFromSnap(x.sp)
 
-x.sp = addBmatToSnap(
-    x.sp,
-    bin.size=5000,
-    num.cores=1
-    );
-
-}
+#x.sp = addBmatToSnap(
+#    x.sp,
+#    bin.size=5000,
+#    num.cores=1
+#    );
+#
+#}
 
 
 res <- rmDoublets(
