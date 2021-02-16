@@ -8,25 +8,27 @@ parser <- ArgumentParser()
 # specify our desired options
 # by default ArgumentParser will add an help option
 parser$add_argument("-i", "--RData", required=TRUE, help="load pmat RData")
-parser$add_argument("--mat", default = "pmat", required=TRUE, help="pmat/bmat/gmat")
+parser$add_argument("--mat", default = "gmat", required=TRUE, help="pmat/bmat/gmat")
 parser$add_argument("--path_to_python", default = NULL, help="path.to.python")
 parser$add_argument("--path_to_condaenv", default = NULL, help="path.to.condaenv")
 parser$add_argument("--path_to_venv", default = NULL, help="path.to.venv")
-parser$add_argument("--rate", default = 0.1, help="expected.doublet.rate")
+parser$add_argument("--rate", default = 0.05, help="expected.doublet.rate")
 parser$add_argument("--min_counts", default = 3, help="min.counts")
 parser$add_argument("--min_cells", default = 3L, help="min.cells")
 parser$add_argument("--min_gene_variability_pctl", default = 85,  help="min.gene_variability_pctl")
 parser$add_argument("--n_prin_comps", default = 30L, help="n.prin_comps")
+parser$add_argument("--black_list", default="/projects/ps-renlab/yangli/genome/mm10/mm10.blacklist.bed.gz", help="black list file")
 parser$add_argument("-o", "--output", required=TRUE, help="output file prefix")
 # get command line options, if help option encountered print help and exit,
 # otherwise if options not found on command line then set defaults,
 args <- parser$parse_args()
 
 suppressPackageStartupMessages(library("SnapATAC"))
+suppressPackageStartupMessages(library("GenomicRanges"))
 library("tictoc")
 library("umap")
 
-.libPaths("/home/yangli1/apps/anaconda3/envs/r_env/lib/R/library")
+#.libPaths("/home/yangli1/apps/anaconda3/envs/r_env/lib/R/library")
 
 RDataF = as.character(args$RData)
 mat = args$mat
@@ -38,6 +40,7 @@ min_counts = as.numeric(args$min_counts)
 min_cells = args$min_cells
 min_gene_variability_pctl = as.numeric(args$min_gene_variability_pctl)
 n_prin_comps = args$n_prin_comps
+black_listF = args$black_list
 outF = as.character(args$output)
 
 #========================#
@@ -380,21 +383,89 @@ plotValue.default <- function(
 
 #---------------------------
 
+tic("loadSnap")
 load(RDataF)
-
-#if(mat == "bmat"){
-
-#rmBmatFromSnap(x.sp)
-
-#x.sp = addBmatToSnap(
-#    x.sp,
-#    bin.size=5000,
-#    num.cores=1
-#    );
-#
-#}
+x.sp = addBmatToSnap(
+    x.sp,
+    bin.size=5000,
+    num.cores=1
+    );
+x.sp = addGmatToSnap(
+    x.sp,
+    num.cores=1
+    );
+toc()
 
 
+tic("makeBinary")
+x.sp = makeBinary(x.sp, mat="bmat");
+toc()
+
+tic("filterBins")
+black_list = read.table(black_listF);
+black_list.gr = GRanges(
+    black_list[,1],
+    IRanges(black_list[,2], black_list[,3])
+  );
+idy = queryHits(
+    findOverlaps(x.sp@feature, black_list.gr)
+  );
+if(length(idy) > 0){
+    x.sp = x.sp[,-idy, mat="bmat"];
+  };
+
+
+chr.exclude = seqlevels(x.sp@feature)[grep("random|chrM", seqlevels(x.sp@feature))];
+idy = grep(paste(chr.exclude, collapse="|"), x.sp@feature);
+if(length(idy) > 0){
+    x.sp = x.sp[,-idy, mat="bmat"]
+  };
+
+bin.cov = log10(Matrix::colSums(x.sp@bmat)+1);
+bin.cutoff = quantile(bin.cov[bin.cov > 0], 0.95);
+idy = which(bin.cov <= bin.cutoff & bin.cov > 0);
+x.sp = x.sp[, idy, mat="bmat"];
+x.sp
+toc()
+
+tic("runDiffusionMaps")
+x.sp = runDiffusionMaps(
+    obj= x.sp,
+    input.mat="bmat",
+    num.eigs=n_prin_comps
+  );
+toc()
+
+tic("runKNN")
+x.sp = runKNN(
+    obj=x.sp,
+    eigs.dims=1:n_prin_comps,
+    k=15
+    );
+toc()
+
+## R-igraph
+tic("runCluster")
+x.sp = runCluster(obj=x.sp,
+    tmp.folder=tempdir(),
+    louvain.lib="R-igraph",
+    seed.use=10
+    );
+toc()
+
+tic("runViz_umap")
+x.sp = runViz(
+    obj=x.sp,
+    tmp.folder=tempdir(),
+    dims=2,
+    eigs.dims=1:n_prin_comps,
+    method="umap",
+    seed.use=10
+  );
+toc()
+
+
+tic("rmDoublets")
 res <- rmDoublets(
     x.sp,
     mat = mat,
@@ -407,7 +478,7 @@ res <- rmDoublets(
     min.gene_variability_pctl = min_gene_variability_pctl,
     n.prin_comps = n_prin_comps
 )
-
+toc()
 
 # doublet scores
 #head(res$doublet_scores)
@@ -420,73 +491,18 @@ pdf(paste(outF, ".plotHistDoublets.pdf",sep=""), height=3, width=8)
 plotHistDoublets(res$scrub)
 dev.off()
 
-pdf(paste(outF, ".plotDoublets.pdf",sep=""))
-
-use.value <- res$doublet_scores
-plotValue(
-    obj=x.sp,
-    values=use.value,
-    viz.method="umap",
-    point.size=0.3,
-    point.color="red",
-    point.shape=19,
-    background.point=TRUE,
-    background.point.color="grey",
-    background.point.alpha=0.3,
-    background.point.size=0.1,
-    background.point.shape=19,
-    low.value=0.0,
-    high.value=1.0,
-    down.sample=5000,
-    seed.use=10,
-    plot.nrow=4,
-    plot.ncol=4,
-    pdf.file.name=NULL,
-    pdf.height=7,
-    pdf.width=7
-    );
-
-use.value <- as.numeric(res$predicted_doublets)
-plotValue(
-    obj=x.sp,
-    values=use.value,
-    viz.method="umap",
-    point.size=0.3,
-    point.color="red",
-    point.shape=19,
-    background.point=TRUE,
-    background.point.color="grey",
-    background.point.alpha=0.3,
-    background.point.size=0.1,
-    background.point.shape=19,
-    low.value=0.0,
-    high.value=1.0,
-    down.sample=5000,
-    seed.use=10,
-    plot.nrow=4,
-    plot.ncol=4,
-    pdf.file.name=NULL,
-    pdf.height=7,
-    pdf.width=7
-    );
-
-dev.off()
-
-set.seed(2019)
+set.seed(2020)
 doublet_sim <- sample(res$scrub$doublet_scores_sim_, length(res$scrub$doublet_scores_obs_))
+x.sp@metaData$doublet_scores <- res$doublet_scores
 outTable <- as.data.frame(cbind(x.sp@sample, x.sp@barcode, res$doublet_scores, res$predicted_doublets, doublet_sim, res$scrub$threshold_))
 colnames(outTable) <- c("sample","barcode", "doublet_scores", "predicted_doublets", "sim_doublet_scores", "threshold")
 outTablename = paste(outF, ".rmDoublets.txt",sep="")
 write.table(outTable, outTablename, col.names=T, row.names=F, sep="\t", quote=F)
 
-# filter potential doublets
-rm.idx <- which(res$predicted_doublets==1)
-retain.idx <- which(res$predicted_doublets==0)
 
-x.sp <- x.sp[retain.idx,]
-
-outfname = paste(outF, ".rmDoublets.RData",sep="")
+tic("saveSnap")
+outfname = paste(outF, ".qc.cluster.RData",sep="")
+#outfname = paste(outF, ".rmDoublets.RData", sep="")
 save(x.sp, file=outfname)
-
-
+toc()
 

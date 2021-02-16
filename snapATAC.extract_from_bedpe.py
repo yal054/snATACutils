@@ -33,7 +33,7 @@ def run():
 def generate_bedpes(clusterf, dirPrefix, ncpu, outPrefix):
     clust_dat = pd.read_csv(clusterf, sep="\t")
 #    clust_dat.rename(columns={'x.sp@sample':'sample','x.sp@cluster':'cluster',}, inplace=True)
-    clust_dat.rename(columns={'L3cluster':'cluster'}, inplace=True)
+#    clust_dat.rename(columns={'L3cluster':'cluster'}, inplace=True)
     clust_dat["uniq_barcode"] = clust_dat[['sample', 'barcode']].apply(lambda x: '.'.join(x), axis=1)
     clust_dat_dict = pd.Series(clust_dat["cluster"].values,index=clust_dat["uniq_barcode"]).to_dict()
     outf_dict = dict()

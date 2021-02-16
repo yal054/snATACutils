@@ -30,7 +30,7 @@ cpus = as.numeric(args$cpu)
 outF = args$output
 
 require(stringr)
-pnames <- head(unlist(str_split(tail(unlist(str_split(snapF, "/")),1),".DNA.snap")),1)
+pnames <- head(unlist(str_split(tail(unlist(str_split(snapF, "/")),1),".snap")),1)
 
 tic("readSnap")
 x.sp = createSnap(
@@ -76,9 +76,9 @@ p = ggplot(
     geom_hline(yintercept=tsse_cutoff) + geom_vline(xintercept=log10(fragment_num)) +
     labs(x = "log10(UQ + 1)", y="TSS enrichment")
 pdf(paste(outF, ".tsse2depth.raw.pdf",sep=""))
-plot(p)
 smoothScatter(metaF$log10UQ, metaF$TSSe)
 abline(v=log10(fragment_num), h=tsse_cutoff)
+plot(p)
 dev.off()
 
 x.sp@metaData <- metaF
