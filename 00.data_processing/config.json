@@ -5,7 +5,7 @@
         "REF_CHROM_SIZE": "/projects/ps-renlab/yangli/genome/mm10/mm10.chrom.sizes",
         "REF_BLACKLIST": "/projects/ps-renlab/yangli/genome/mm10/mm10.blacklist.bed.gz",
         "REF_ANNO_BED": "/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.geneUp2k.bed",
-        "REF_ANNO_GTF": "/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf.gz"
+        "REF_ANNO_GTF": "/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf"
     },
     "software": {
         "Bwa": "/opt/biotools/bwa/bin/bwa",

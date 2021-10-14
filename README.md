@@ -6,18 +6,23 @@
 * This package is still under active development.
 
 ## Table of Contents
-#### 00.data processing
+#### * 00.data processing
+>
 
-#### 01.cell_clustering
+#### * 01.cell_clustering
+>
 
-#### 02.cluster_analysis
+#### * 02.cluster_analysis
+>
 
-#### 03.peak_calling
+#### * 03.peak_calling
+>
 
-#### 04.peak_analysis
+#### * 04.peak_analysis
+>
 
-#### flagship2020:
-Supplementary tables for putative enhancers identified in [flagship paper](https://www.nature.com/articles/s41586-021-03950-0)
+#### * flagship2020:
+> Supplementary tables for putative enhancers identified in [flagship paper](https://www.nature.com/articles/s41586-021-03950-0)
 
 ## Requirements
 * python v3.6.8
