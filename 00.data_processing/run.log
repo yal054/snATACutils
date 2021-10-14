@@ -194,3 +194,26 @@ Submitted job 1 with external jobid '27167657.tscc-mgr7.local'.
 [Thu Oct 14 15:30:19 2021]
 Finished job 1.
 6 of 13 steps (46%) done
+[Thu Oct 14 15:31:49 2021]
+Finished job 10.
+7 of 13 steps (54%) done
+
+[Thu Oct 14 15:31:49 2021]
+rule snap_add_gmat:
+    input: sample2/sample2.snap, sample2/sample2.snap.add_bmat.ok
+    output: sample2/sample2.snap.add_gmat.ok
+    log: log/sample2.snap_add_gmat.log
+    jobid: 2
+    benchmark: benchmarks/sample2.snap_add_gmat.benchmark
+    wildcards: sample=sample2
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-add-gmat         --snap-file=sample2/sample2.snap         --gene-file=/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.geneUp2k.bed         --verbose=True &> log/sample2.snap_add_gmat.log
+        echo "Done" > sample2/sample2.snap.add_gmat.ok
+        
+Submitted job 2 with external jobid '27167719.tscc-mgr7.local'.
+[Thu Oct 14 15:38:50 2021]
+Finished job 2.
+8 of 13 steps (62%) done
+Exiting because a job execution failed. Look above for error message
+Complete log: /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/.snakemake/log/2021-10-14T150556.347771.snakemake.log

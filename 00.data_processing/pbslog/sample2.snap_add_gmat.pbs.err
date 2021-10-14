@@ -1,0 +1,25 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	snap_add_gmat
+	1
+
+[Thu Oct 14 15:37:48 2021]
+rule snap_add_gmat:
+    input: sample2/sample2.snap, sample2/sample2.snap.add_bmat.ok
+    output: sample2/sample2.snap.add_gmat.ok
+    log: log/sample2.snap_add_gmat.log
+    jobid: 0
+    benchmark: benchmarks/sample2.snap_add_gmat.benchmark
+    wildcards: sample=sample2
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-add-gmat         --snap-file=sample2/sample2.snap         --gene-file=/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.geneUp2k.bed         --verbose=True &> log/sample2.snap_add_gmat.log
+        echo "Done" > sample2/sample2.snap.add_gmat.ok
+        
+[Thu Oct 14 15:38:00 2021]
+Finished job 0.
+1 of 1 steps (100%) done

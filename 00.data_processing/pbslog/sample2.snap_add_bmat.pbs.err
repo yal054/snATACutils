@@ -1,0 +1,25 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	snap_add_bmat
+	1
+
+[Thu Oct 14 15:23:30 2021]
+rule snap_add_bmat:
+    input: sample2/sample2.snap
+    output: sample2/sample2.snap.add_bmat.ok
+    log: log/sample2.snap_add_bmat.log
+    jobid: 0
+    benchmark: benchmarks/sample2.snap_add_bmat.benchmark
+    wildcards: sample=sample2
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-add-bmat         --snap-file=sample2/sample2.snap         --bin-size-list 1000 5000 10000         --verbose=True &> log/sample2.snap_add_bmat.log
+        echo "Done" > sample2/sample2.snap.add_bmat.ok
+        
+[Thu Oct 14 15:31:33 2021]
+Finished job 0.
+1 of 1 steps (100%) done
