@@ -1,0 +1,44 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	tsse2depth
+	1
+
+[Thu Oct 14 15:16:48 2021]
+rule tsse2depth:
+    input: sample2/sample2.bam
+    output: sample2/sample2.tsse2depth.ok, sample2/sample2.filtered_dedup.nsrt.bam
+    log: log/sample2.tsse2depth.log
+    jobid: 0
+    benchmark: benchmarks/sample2.tsse2depth
+    wildcards: sample=sample2
+
+
+        ../bin/calTSSePE sample2/sample2.bam sample2/tsseANDdepth --pair -g /projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf.gz
+        samtools sort -n sample2/tsseANDdepth/filtered_dedup.bam -o sample2/sample2.filtered_dedup.nsrt.bam
+        echo 'Done' > sample2/sample2.tsse2depth.ok
+        
+calTSSePE: src/Bio/RealWorld/GENCODE.hs:85:9-51: Non-exhaustive patterns in [chr,
+                                      _,
+                                      f3,
+                                      f4,
+                                      f5,
+                                      _,
+                                      f7,
+                                      _,
+                                      f9]
+
+[E::hts_open_format] Failed to open file sample2/tsseANDdepth/filtered_dedup.bam
+samtools sort: can't open "sample2/tsseANDdepth/filtered_dedup.bam": No such file or directory
+Waiting at most 5 seconds for missing files.
+MissingOutputException in line 142 of /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/Snakefile:
+Job completed successfully, but some output files are missing. Missing files after 5 seconds:
+sample2/sample2.filtered_dedup.nsrt.bam
+This might be due to filesystem latency. If that is the case, consider to increase the wait time with --latency-wait.
+Removing output files of failed job tsse2depth since they might be corrupted:
+sample2/sample2.tsse2depth.ok
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message

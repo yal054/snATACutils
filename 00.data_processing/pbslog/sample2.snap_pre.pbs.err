@@ -1,0 +1,24 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	snap_pre
+	1
+
+[Thu Oct 14 15:17:09 2021]
+rule snap_pre:
+    input: sample2/sample2.bam
+    output: sample2/sample2.snap
+    log: log/sample2.snap_pre.log
+    jobid: 0
+    benchmark: benchmarks/sample2.snap_pre.benchmark
+    wildcards: sample=sample2
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-pre          --input-file=sample2/sample2.bam          --output-snap=sample2/sample2.snap         --genome-name=mm10          --genome-size=/projects/ps-renlab/yangli/genome/mm10/mm10.chrom.sizes          --min-mapq=30          --min-flen=0          --max-flen=1000          --keep-chrm=TRUE          --keep-single=TRUE          --keep-secondary=False          --overwrite=True          --min-cov=100          --verbose=True &> log/sample2.snap_pre.log
+        
+[Thu Oct 14 15:17:18 2021]
+Finished job 0.
+1 of 1 steps (100%) done

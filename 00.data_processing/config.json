@@ -1,0 +1,47 @@
+{
+    "project": "retina",
+    "references": {
+        "REF_FA": "/projects/ps-renlab/yangli/genome/mm10/mm10.fa",
+        "REF_CHROM_SIZE": "/projects/ps-renlab/yangli/genome/mm10/mm10.chrom.sizes",
+        "REF_BLACKLIST": "/projects/ps-renlab/yangli/genome/mm10/mm10.blacklist.bed.gz",
+        "REF_ANNO_BED": "/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.geneUp2k.bed",
+        "REF_ANNO_GTF": "/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf.gz"
+    },
+    "software": {
+        "Bwa": "/opt/biotools/bwa/bin/bwa",
+        "Rscript": "/home/yangli1/anaconda3/envs/r_env/bin/Rscript",
+        "Python2": "~/apps/anaconda2/bin/python",
+        "Python3": "~/anaconda3/bin/python"
+        },
+    "scripts": {
+        "path2snaptools": "/home/yangli1/apps/anaconda2/bin/snaptools",
+        "path2calTSSePE": "../bin/calTSSePE",
+        "cbCreateConf": "../bin/cb.createConf.sh"
+    },
+    "snap_align":{
+        "aligner": "bwa",
+        "path_to_aligner": "/opt/biotools/bwa/bin/",
+        "read_fastq_command": "zcat",
+        "min_cov": "0",
+        "num_threads": "4",
+        "if_sort": "True",
+        "tmp_folder": "./",
+        "overwrite": "TRUE"
+    },
+    "runSTAR":{
+        "num_threads": "4"
+    },
+    "pre_sta":{
+        "cpu" : "2"
+    },
+    "plotGene":{
+        "markerGenes" : "gene.markers.txt"
+    },
+    "samples":{
+        "sample1":"8J",
+        "sample2":"8J"
+    },
+    "regions": {
+        "8J": ["sample1", "sample2"]
+    }
+}

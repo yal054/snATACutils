@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -V 
+#PBS -M yangericlisd@gmail.com
+#PBS -m a
+#PBS -A ren-group
+
+# properties = {"type": "single", "rule": "snap_add_bmat", "local": false, "input": ["sample2/sample2.snap"], "output": ["sample2/sample2.snap.add_bmat.ok"], "wildcards": {"sample": "sample2"}, "params": {"snaptools": "/home/yangli1/apps/anaconda2/bin/snaptools", "jobname": "sample2.snap_add_bmat"}, "log": ["log/sample2.snap_add_bmat.log"], "threads": 1, "resources": {}, "jobid": 10, "cluster": {"time": "walltime=12:00:00", "ppn": "nodes=1:ppn=1", "queue": "hotel"}}
+module load samtools
+. ~/.bashrc
+. ~/.condainit
+#conda activate /home/yangli1/anaconda3/envs/r_env/
+ cd /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing && \
+/home/yangli1/anaconda3/envs/snakemake/bin/python3.8 \
+-m snakemake sample2/sample2.snap.add_bmat.ok --snakefile /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/Snakefile \
+--force -j --keep-target-files --keep-remote \
+--wait-for-files /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/.snakemake/tmp.7y4jl7rz sample2/sample2.snap --latency-wait 5 \
+ --attempt 1 --force-use-threads \
+--wrapper-prefix https://github.com/snakemake/snakemake-wrappers/raw/ \
+  -p --allowed-rules snap_add_bmat --nocolor --notemp --no-hooks --nolock \
+--mode 2  && touch /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/.snakemake/tmp.7y4jl7rz/10.jobfinished || (touch /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/.snakemake/tmp.7y4jl7rz/10.jobfailed; exit 1)
+

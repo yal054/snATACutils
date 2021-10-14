@@ -1,0 +1,6 @@
+===== reading the barcodes and bins ======
+@AM	nBinSize:3
+@AM	binSizeList: [1000, 5000, 10000]
+@AM	binSize:1000	nBin:2730901
+@AM	binSize:5000	nBin:546206
+@AM	binSize:10000	nBin:273121

@@ -1,0 +1,196 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cluster nodes: 128
+Job counts:
+	count	jobs
+	1	all
+	2	bam2bedpe
+	2	snap_add_bmat
+	2	snap_add_gmat
+	2	snap_align
+	2	snap_pre
+	2	tsse2depth
+	13
+
+[Thu Oct 14 15:05:56 2021]
+rule snap_align:
+    input: sample2/sample2.demultiplexed.R1.fastq.gz, sample2/sample2.demultiplexed.R2.fastq.gz
+    output: sample2/sample2.bam
+    log: log/sample2.align.log
+    jobid: 12
+    benchmark: benchmarks/sample2.align.benchmark
+    wildcards: sample=sample2
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools align-paired-end          --input-reference=/projects/ps-renlab/yangli/genome/mm10/mm10.fa          --input-fastq1=sample2/sample2.demultiplexed.R1.fastq.gz         --input-fastq2=sample2/sample2.demultiplexed.R2.fastq.gz          --output-bam=sample2/sample2.bam          --aligner=bwa          --path-to-aligner=/opt/biotools/bwa/bin/          --read-fastq-command=zcat          --min-cov=0          --num-threads=4          --if-sort=True          --tmp-folder=./          --overwrite=TRUE &> log/sample2.align.log
+        
+Submitted job 12 with external jobid '27167538.tscc-mgr7.local'.
+
+[Thu Oct 14 15:06:04 2021]
+rule snap_align:
+    input: sample1/sample1.demultiplexed.R1.fastq.gz, sample1/sample1.demultiplexed.R2.fastq.gz
+    output: sample1/sample1.bam
+    log: log/sample1.align.log
+    jobid: 11
+    benchmark: benchmarks/sample1.align.benchmark
+    wildcards: sample=sample1
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools align-paired-end          --input-reference=/projects/ps-renlab/yangli/genome/mm10/mm10.fa          --input-fastq1=sample1/sample1.demultiplexed.R1.fastq.gz         --input-fastq2=sample1/sample1.demultiplexed.R2.fastq.gz          --output-bam=sample1/sample1.bam          --aligner=bwa          --path-to-aligner=/opt/biotools/bwa/bin/          --read-fastq-command=zcat          --min-cov=0          --num-threads=4          --if-sort=True          --tmp-folder=./          --overwrite=TRUE &> log/sample1.align.log
+        
+Submitted job 11 with external jobid '27167539.tscc-mgr7.local'.
+[Thu Oct 14 15:12:57 2021]
+Finished job 12.
+1 of 13 steps (8%) done
+
+[Thu Oct 14 15:12:57 2021]
+rule tsse2depth:
+    input: sample2/sample2.bam
+    output: sample2/sample2.tsse2depth.ok, sample2/sample2.filtered_dedup.nsrt.bam
+    log: log/sample2.tsse2depth.log
+    jobid: 4
+    benchmark: benchmarks/sample2.tsse2depth
+    wildcards: sample=sample2
+
+
+        ../bin/calTSSePE sample2/sample2.bam sample2/tsseANDdepth --pair -g /projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf.gz
+        samtools sort -n sample2/tsseANDdepth/filtered_dedup.bam -o sample2/sample2.filtered_dedup.nsrt.bam
+        echo 'Done' > sample2/sample2.tsse2depth.ok
+        
+Submitted job 4 with external jobid '27167585.tscc-mgr7.local'.
+
+[Thu Oct 14 15:13:04 2021]
+rule snap_pre:
+    input: sample2/sample2.bam
+    output: sample2/sample2.snap
+    log: log/sample2.snap_pre.log
+    jobid: 9
+    benchmark: benchmarks/sample2.snap_pre.benchmark
+    wildcards: sample=sample2
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-pre          --input-file=sample2/sample2.bam          --output-snap=sample2/sample2.snap         --genome-name=mm10          --genome-size=/projects/ps-renlab/yangli/genome/mm10/mm10.chrom.sizes          --min-mapq=30          --min-flen=0          --max-flen=1000          --keep-chrm=TRUE          --keep-single=TRUE          --keep-secondary=False          --overwrite=True          --min-cov=100          --verbose=True &> log/sample2.snap_pre.log
+        
+Submitted job 9 with external jobid '27167586.tscc-mgr7.local'.
+[Thu Oct 14 15:13:07 2021]
+Finished job 11.
+2 of 13 steps (15%) done
+
+[Thu Oct 14 15:13:07 2021]
+rule snap_pre:
+    input: sample1/sample1.bam
+    output: sample1/sample1.snap
+    log: log/sample1.snap_pre.log
+    jobid: 7
+    benchmark: benchmarks/sample1.snap_pre.benchmark
+    wildcards: sample=sample1
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-pre          --input-file=sample1/sample1.bam          --output-snap=sample1/sample1.snap         --genome-name=mm10          --genome-size=/projects/ps-renlab/yangli/genome/mm10/mm10.chrom.sizes          --min-mapq=30          --min-flen=0          --max-flen=1000          --keep-chrm=TRUE          --keep-single=TRUE          --keep-secondary=False          --overwrite=True          --min-cov=100          --verbose=True &> log/sample1.snap_pre.log
+        
+Submitted job 7 with external jobid '27167587.tscc-mgr7.local'.
+
+[Thu Oct 14 15:13:07 2021]
+rule tsse2depth:
+    input: sample1/sample1.bam
+    output: sample1/sample1.tsse2depth.ok, sample1/sample1.filtered_dedup.nsrt.bam
+    log: log/sample1.tsse2depth.log
+    jobid: 3
+    benchmark: benchmarks/sample1.tsse2depth
+    wildcards: sample=sample1
+
+
+        ../bin/calTSSePE sample1/sample1.bam sample1/tsseANDdepth --pair -g /projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf.gz
+        samtools sort -n sample1/tsseANDdepth/filtered_dedup.bam -o sample1/sample1.filtered_dedup.nsrt.bam
+        echo 'Done' > sample1/sample1.tsse2depth.ok
+        
+Submitted job 3 with external jobid '27167588.tscc-mgr7.local'.
+[Thu Oct 14 15:17:08 2021]
+Error in rule tsse2depth:
+    jobid: 4
+    output: sample2/sample2.tsse2depth.ok, sample2/sample2.filtered_dedup.nsrt.bam
+    log: log/sample2.tsse2depth.log (check log file(s) for error message)
+    shell:
+        
+        ../bin/calTSSePE sample2/sample2.bam sample2/tsseANDdepth --pair -g /projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf.gz
+        samtools sort -n sample2/tsseANDdepth/filtered_dedup.bam -o sample2/sample2.filtered_dedup.nsrt.bam
+        echo 'Done' > sample2/sample2.tsse2depth.ok
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    cluster_jobid: 27167585.tscc-mgr7.local
+
+Error executing rule tsse2depth on cluster (jobid: 4, external: 27167585.tscc-mgr7.local, jobscript: /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/.snakemake/tmp.7y4jl7rz/tsse2depth.4.pbs). For error details see the cluster log and the log files of the involved rule(s).
+Job failed, going on with independent jobs.
+[Thu Oct 14 15:17:08 2021]
+Finished job 7.
+3 of 13 steps (23%) done
+
+[Thu Oct 14 15:17:08 2021]
+rule snap_add_bmat:
+    input: sample1/sample1.snap
+    output: sample1/sample1.snap.add_bmat.ok
+    log: log/sample1.snap_add_bmat.log
+    jobid: 8
+    benchmark: benchmarks/sample1.snap_add_bmat.benchmark
+    wildcards: sample=sample1
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-add-bmat         --snap-file=sample1/sample1.snap         --bin-size-list 1000 5000 10000         --verbose=True &> log/sample1.snap_add_bmat.log
+        echo "Done" > sample1/sample1.snap.add_bmat.ok
+        
+Submitted job 8 with external jobid '27167622.tscc-mgr7.local'.
+[Thu Oct 14 15:17:38 2021]
+Finished job 9.
+4 of 13 steps (31%) done
+
+[Thu Oct 14 15:17:38 2021]
+rule snap_add_bmat:
+    input: sample2/sample2.snap
+    output: sample2/sample2.snap.add_bmat.ok
+    log: log/sample2.snap_add_bmat.log
+    jobid: 10
+    benchmark: benchmarks/sample2.snap_add_bmat.benchmark
+    wildcards: sample=sample2
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-add-bmat         --snap-file=sample2/sample2.snap         --bin-size-list 1000 5000 10000         --verbose=True &> log/sample2.snap_add_bmat.log
+        echo "Done" > sample2/sample2.snap.add_bmat.ok
+        
+[Thu Oct 14 15:17:38 2021]
+Error in rule tsse2depth:
+    jobid: 3
+    output: sample1/sample1.tsse2depth.ok, sample1/sample1.filtered_dedup.nsrt.bam
+    log: log/sample1.tsse2depth.log (check log file(s) for error message)
+    shell:
+        
+        ../bin/calTSSePE sample1/sample1.bam sample1/tsseANDdepth --pair -g /projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf.gz
+        samtools sort -n sample1/tsseANDdepth/filtered_dedup.bam -o sample1/sample1.filtered_dedup.nsrt.bam
+        echo 'Done' > sample1/sample1.tsse2depth.ok
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+    cluster_jobid: 27167588.tscc-mgr7.local
+
+Error executing rule tsse2depth on cluster (jobid: 3, external: 27167588.tscc-mgr7.local, jobscript: /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/.snakemake/tmp.7y4jl7rz/tsse2depth.3.pbs). For error details see the cluster log and the log files of the involved rule(s).
+Job failed, going on with independent jobs.
+Submitted job 10 with external jobid '27167627.tscc-mgr7.local'.
+[Thu Oct 14 15:23:18 2021]
+Finished job 8.
+5 of 13 steps (38%) done
+
+[Thu Oct 14 15:23:18 2021]
+rule snap_add_gmat:
+    input: sample1/sample1.snap, sample1/sample1.snap.add_bmat.ok
+    output: sample1/sample1.snap.add_gmat.ok
+    log: log/sample1.snap_add_gmat.log
+    jobid: 1
+    benchmark: benchmarks/sample1.snap_add_gmat.benchmark
+    wildcards: sample=sample1
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools snap-add-gmat         --snap-file=sample1/sample1.snap         --gene-file=/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.geneUp2k.bed         --verbose=True &> log/sample1.snap_add_gmat.log
+        echo "Done" > sample1/sample1.snap.add_gmat.ok
+        
+Submitted job 1 with external jobid '27167657.tscc-mgr7.local'.
+[Thu Oct 14 15:30:19 2021]
+Finished job 1.
+6 of 13 steps (46%) done

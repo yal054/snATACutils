@@ -1,0 +1,46 @@
+{
+    "__default__" :
+    {
+        "time" : "walltime=48:00:00",
+        "ppn" : "nodes=1:ppn=4",
+        "queue" : "hotel"
+    },
+    "snap_align" :
+    {
+        "time" : "walltime=24:00:00",
+        "ppn" : "nodes=1:ppn=4",
+        "queue" : "hotel"
+    },
+    "tsse2depth" :
+    {
+        "time" : "walltime=12:00:00",
+        "ppn" : "nodes=1:ppn=1",
+        "queue" : "home"
+    },
+    "snap_pre" :
+    {
+        "time" : "walltime=12:00:00",
+        "ppn" : "nodes=1:ppn=1",
+        "queue" : "hotel"
+    },
+    "snap_add_bmat" :
+    {
+        "time" : "walltime=12:00:00",
+        "ppn" : "nodes=1:ppn=1",
+        "queue" : "hotel"
+    },
+    "snap_add_gmat" :
+    {
+        "time" : "walltime=12:00:00",
+        "ppn" : "nodes=1:ppn=1",
+        "queue" : "hotel"
+    },
+    "bam2bedpe":
+    {
+        "time" : "walltime=12:00:00",
+        "ppn" : "nodes=1:ppn=1",
+        "queue" : "home"
+    }
+}
+
+

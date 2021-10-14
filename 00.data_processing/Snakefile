@@ -1,0 +1,180 @@
+##############################################
+#global settings
+shell.prefix("set -o pipefail; ")
+shell.prefix("set -e; ")
+shell.prefix("set -u; ")
+localrules: all
+configfile: "config.json"
+
+# link
+from snakemake.exceptions import MissingInputException
+
+#include_prefix = "/projects/ps-renlab/yangli/scripts/snakemake/"
+
+#include:
+#    include_prefix + "rules/"
+
+regionItems = {
+    samples: regions for samples, regions in config["samples"].items()
+}
+
+
+rule all:
+    input:
+        expand("{sample}/{sample}.snap.add_gmat.ok", sample=config["samples"]),
+        expand("{sample}/{sample}.tsse2depth.ok", sample=config["samples"]),
+        expand("{sample}/{sample}.bedpe.gz", sample=config["samples"])
+
+rule snap_align: 
+    input:
+        fq1 = ancient("{sample}/{sample}.demultiplexed.R1.fastq.gz"),
+        fq2 = ancient("{sample}/{sample}.demultiplexed.R2.fastq.gz")
+    output:
+        bam = "{sample}/{sample}.bam"
+    params:
+        snaptools = config["scripts"]["path2snaptools"],
+        ref = config["references"]["REF_FA"],
+        aligner = config["snap_align"]["aligner"],
+        path_to_aligner = config["snap_align"]["path_to_aligner"],
+        read_fastq_command = config["snap_align"]["read_fastq_command"],
+        min_cov = config["snap_align"]["min_cov"],
+        num_threads = config["snap_align"]["num_threads"],
+        if_sort = config["snap_align"]["if_sort"],
+        tmp_folder = config["snap_align"]["tmp_folder"],
+        overwrite = config["snap_align"]["overwrite"],
+        jobname = "{sample}.align"
+    benchmark:
+        "benchmarks/{sample}.align.benchmark"
+    log:
+        "log/{sample}.align.log"
+    shell:
+        """
+        {params.snaptools} align-paired-end  \
+        --input-reference={params.ref}  \
+        --input-fastq1={input.fq1} \
+        --input-fastq2={input.fq2}  \
+        --output-bam={output.bam}  \
+        --aligner={params.aligner}  \
+        --path-to-aligner={params.path_to_aligner}  \
+        --read-fastq-command={params.read_fastq_command}  \
+        --min-cov={params.min_cov}  \
+        --num-threads={params.num_threads}  \
+        --if-sort={params.if_sort}  \
+        --tmp-folder={params.tmp_folder}  \
+        --overwrite={params.overwrite} &> {log}
+        """
+
+rule snap_pre:
+    input:
+        bam = ancient("{sample}/{sample}.bam")
+    output:
+        snap = "{sample}/{sample}.snap"
+    params:
+        snaptools = config["scripts"]["path2snaptools"],
+        chrom_sizes=config["references"]["REF_CHROM_SIZE"],
+        jobname = "{sample}.snap_pre"
+    benchmark:
+        "benchmarks/{sample}.snap_pre.benchmark"
+    log:
+        "log/{sample}.snap_pre.log"
+    shell:
+        """
+        {params.snaptools} snap-pre  \
+        --input-file={input.bam}  \
+        --output-snap={output.snap} \
+        --genome-name=mm10  \
+        --genome-size={params.chrom_sizes}  \
+        --min-mapq=30  \
+        --min-flen=0  \
+        --max-flen=1000  \
+        --keep-chrm=TRUE  \
+        --keep-single=TRUE  \
+        --keep-secondary=False  \
+        --overwrite=True  \
+        --min-cov=100  \
+        --verbose=True &> {log}
+        """
+
+rule snap_add_bmat:
+    input:
+        snap=ancient("{sample}/{sample}.snap")
+    output:
+        "{sample}/{sample}.snap.add_bmat.ok"
+    params:
+        snaptools = config["scripts"]["path2snaptools"],
+        jobname = "{sample}.snap_add_bmat"
+    benchmark:
+        "benchmarks/{sample}.snap_add_bmat.benchmark"
+    log:
+        "log/{sample}.snap_add_bmat.log"
+    shell:
+        """
+        {params.snaptools} snap-add-bmat \
+        --snap-file={input.snap} \
+        --bin-size-list 1000 5000 10000 \
+        --verbose=True &> {log}
+        echo "Done" > {output}
+        """
+
+rule snap_add_gmat:
+    input:
+        snap=ancient("{sample}/{sample}.snap"),
+        bmatok=ancient("{sample}/{sample}.snap.add_bmat.ok")
+    output:
+        "{sample}/{sample}.snap.add_gmat.ok"
+    params:
+        snaptools = config["scripts"]["path2snaptools"],
+        anno_bed=config["references"]["REF_ANNO_BED"],
+        jobname = "{sample}.snap_add_gmat"
+    benchmark:
+        "benchmarks/{sample}.snap_add_gmat.benchmark"
+    log:
+        "log/{sample}.snap_add_gmat.log"
+    shell:
+        """
+        {params.snaptools} snap-add-gmat \
+        --snap-file={input.snap} \
+        --gene-file={params.anno_bed} \
+        --verbose=True &> {log}
+        echo "Done" > {output}
+        """
+
+rule tsse2depth:
+    input:
+        bam = ancient("{sample}/{sample}.bam")
+    output:
+        ok = "{sample}/{sample}.tsse2depth.ok",
+        bam = "{sample}/{sample}.filtered_dedup.nsrt.bam"
+    params:
+        calTSSePE = config["scripts"]["path2calTSSePE"],
+        outdir = "{sample}/tsseANDdepth",
+        bam = "{sample}/tsseANDdepth/filtered_dedup.bam",
+        anno_gtf = config["references"]["REF_ANNO_GTF"],
+        jobname = "{sample}.tsse"
+    benchmark:
+        "benchmarks/{sample}.tsse2depth"
+    log:
+        "log/{sample}.tsse2depth.log"
+    shell:
+        """
+        {params.calTSSePE} {input.bam} {params.outdir} --pair -g {params.anno_gtf}
+        samtools sort -n {params.bam} -o {output.bam}
+        echo 'Done' > {output.ok}
+        """
+
+rule bam2bedpe:
+    input:
+        bam = ancient("{sample}/{sample}.filtered_dedup.nsrt.bam")
+    output:
+        bedpe = "{sample}/{sample}.bedpe.gz"
+    params:
+        jobname = "{sample}.bam2bedpe"
+    benchmark:
+        "benchmarks/{sample}.bam2bedpe.benchmark"
+    log:
+        "log/{sample}.bam2bedpe.log"
+    shell:
+        """
+        bedtools bamtobed -bedpe -mate1 -i {input.bam} | gzip > {output.bedpe} 
+        """
+

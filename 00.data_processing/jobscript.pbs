@@ -1,0 +1,12 @@
+#!/bin/bash
+#PBS -V 
+#PBS -M yangericlisd@gmail.com
+#PBS -m a
+#PBS -A ren-group
+
+# properties = {properties}
+module load samtools
+. ~/.bashrc
+. ~/.condainit
+#conda activate /home/yangli1/anaconda3/envs/r_env/
+{exec_job}

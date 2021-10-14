@@ -1,0 +1,3 @@
+WorkflowError in line 7 of /mnt/tscc/yangli/scripts/snATACutils/00.data_processing/Snakefile:
+Config file is not valid JSON or YAML. In case of YAML, make sure to not mix whitespace and tab indentation.
+  File "/mnt/tscc/yangli/scripts/snATACutils/00.data_processing/Snakefile", line 7, in <module>

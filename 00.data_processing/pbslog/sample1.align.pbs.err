@@ -1,0 +1,24 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 4
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	snap_align
+	1
+
+[Thu Oct 14 15:11:30 2021]
+rule snap_align:
+    input: sample1/sample1.demultiplexed.R1.fastq.gz, sample1/sample1.demultiplexed.R2.fastq.gz
+    output: sample1/sample1.bam
+    log: log/sample1.align.log
+    jobid: 0
+    benchmark: benchmarks/sample1.align.benchmark
+    wildcards: sample=sample1
+
+
+        /home/yangli1/apps/anaconda2/bin/snaptools align-paired-end          --input-reference=/projects/ps-renlab/yangli/genome/mm10/mm10.fa          --input-fastq1=sample1/sample1.demultiplexed.R1.fastq.gz         --input-fastq2=sample1/sample1.demultiplexed.R2.fastq.gz          --output-bam=sample1/sample1.bam          --aligner=bwa          --path-to-aligner=/opt/biotools/bwa/bin/          --read-fastq-command=zcat          --min-cov=0          --num-threads=4          --if-sort=True          --tmp-folder=./          --overwrite=TRUE &> log/sample1.align.log
+        
+[Thu Oct 14 15:13:01 2021]
+Finished job 0.
+1 of 1 steps (100%) done
