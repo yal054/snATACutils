@@ -73,3 +73,19 @@ rule bam2bedpe:
         bedtools bamtobed -bedpe -mate1 -i sample1/sample1.filtered_dedup.nsrt.bam | gzip > sample1/sample1.bedpe.gz 
         
 Submitted job 5 with external jobid '27168036.tscc-mgr7.local'.
+[Thu Oct 14 16:25:07 2021]
+Finished job 6.
+3 of 5 steps (60%) done
+[Thu Oct 14 16:25:07 2021]
+Finished job 5.
+4 of 5 steps (80%) done
+
+[Thu Oct 14 16:25:07 2021]
+localrule all:
+    input: sample1/sample1.snap.add_gmat.ok, sample2/sample2.snap.add_gmat.ok, sample1/sample1.tsse2depth.ok, sample2/sample2.tsse2depth.ok, sample1/sample1.bedpe.gz, sample2/sample2.bedpe.gz
+    jobid: 0
+
+[Thu Oct 14 16:25:07 2021]
+Finished job 0.
+5 of 5 steps (100%) done
+Complete log: /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/.snakemake/log/2021-10-14T161606.529923.snakemake.log

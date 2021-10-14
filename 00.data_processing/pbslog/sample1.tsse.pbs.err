@@ -7,7 +7,7 @@ Job counts:
 	1	tsse2depth
 	1
 
-[Thu Oct 14 15:17:01 2021]
+[Thu Oct 14 16:20:26 2021]
 rule tsse2depth:
     input: sample1/sample1.bam
     output: sample1/sample1.tsse2depth.ok, sample1/sample1.filtered_dedup.nsrt.bam
@@ -17,28 +17,10 @@ rule tsse2depth:
     wildcards: sample=sample1
 
 
-        ../bin/calTSSePE sample1/sample1.bam sample1/tsseANDdepth --pair -g /projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf.gz
+        ../bin/calTSSePE sample1/sample1.bam sample1/tsseANDdepth --pair -g /projects/ps-renlab/yangli/genome/mm10/gencode.vM16.annotation.gtf
         samtools sort -n sample1/tsseANDdepth/filtered_dedup.bam -o sample1/sample1.filtered_dedup.nsrt.bam
         echo 'Done' > sample1/sample1.tsse2depth.ok
         
-calTSSePE: src/Bio/RealWorld/GENCODE.hs:85:9-51: Non-exhaustive patterns in [chr,
-                                      _,
-                                      f3,
-                                      f4,
-                                      f5,
-                                      _,
-                                      f7,
-                                      _,
-                                      f9]
-
-[E::hts_open_format] Failed to open file sample1/tsseANDdepth/filtered_dedup.bam
-samtools sort: can't open "sample1/tsseANDdepth/filtered_dedup.bam": No such file or directory
-Waiting at most 5 seconds for missing files.
-MissingOutputException in line 142 of /projects/ps-renlab/yangli/scripts/snATACutils/00.data_processing/Snakefile:
-Job completed successfully, but some output files are missing. Missing files after 5 seconds:
-sample1/sample1.filtered_dedup.nsrt.bam
-This might be due to filesystem latency. If that is the case, consider to increase the wait time with --latency-wait.
-Removing output files of failed job tsse2depth since they might be corrupted:
-sample1/sample1.tsse2depth.ok
-Shutting down, this might take some time.
-Exiting because a job execution failed. Look above for error message
+[Thu Oct 14 16:21:03 2021]
+Finished job 0.
+1 of 1 steps (100%) done

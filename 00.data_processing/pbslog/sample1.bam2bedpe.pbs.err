@@ -1,0 +1,27 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	bam2bedpe
+	1
+
+[Thu Oct 14 16:24:39 2021]
+rule bam2bedpe:
+    input: sample1/sample1.filtered_dedup.nsrt.bam
+    output: sample1/sample1.bedpe.gz
+    log: log/sample1.bam2bedpe.log
+    jobid: 0
+    benchmark: benchmarks/sample1.bam2bedpe.benchmark
+    wildcards: sample=sample1
+
+
+        bedtools bamtobed -bedpe -mate1 -i sample1/sample1.filtered_dedup.nsrt.bam | gzip > sample1/sample1.bedpe.gz 
+        
+*****WARNING: Query GAGTAGCTCCACCCGGTATTCG:K00168:256:HC2MMBBXY:1:1101:12195:11126 is marked as paired, but its mate does not occur next to it in your BAM file.  Skipping. 
+*****WARNING: Query GTGAGAGCTGCTTTAACTGCGC:K00168:256:HC2MMBBXY:1:1101:25520:10475 is marked as paired, but its mate does not occur next to it in your BAM file.  Skipping. 
+*****WARNING: Query TTGTGACATCTCACCAAACCGG:K00168:256:HC2MMBBXY:1:1101:16731:13605 is marked as paired, but its mate does not occur next to it in your BAM file.  Skipping. 
+[Thu Oct 14 16:24:42 2021]
+Finished job 0.
+1 of 1 steps (100%) done

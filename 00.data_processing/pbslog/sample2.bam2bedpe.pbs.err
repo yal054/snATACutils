@@ -1,0 +1,24 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	bam2bedpe
+	1
+
+[Thu Oct 14 16:24:37 2021]
+rule bam2bedpe:
+    input: sample2/sample2.filtered_dedup.nsrt.bam
+    output: sample2/sample2.bedpe.gz
+    log: log/sample2.bam2bedpe.log
+    jobid: 0
+    benchmark: benchmarks/sample2.bam2bedpe.benchmark
+    wildcards: sample=sample2
+
+
+        bedtools bamtobed -bedpe -mate1 -i sample2/sample2.filtered_dedup.nsrt.bam | gzip > sample2/sample2.bedpe.gz 
+        
+[Thu Oct 14 16:24:39 2021]
+Finished job 0.
+1 of 1 steps (100%) done
