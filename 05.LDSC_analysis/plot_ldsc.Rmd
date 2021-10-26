@@ -1,0 +1,183 @@
+---
+title: "ldsc summary"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, fig.align='center')
+```
+
+```{r}
+library(tidyverse)
+require(forcats)
+library(RColorBrewer)
+library(pheatmap)
+library(qvalue)
+library(viridis)
+library(dendsort)
+sort_hclust <- function(...) as.hclust(dendsort(as.dendrogram(...)))
+```
+
+```{r}
+dat_all <- read_tsv("res.summary.tsv", col_names = c("Cluster", "Coefficient", "Coefficient_std_error", "Coefficient_P_value", "Trait", "Set")) 
+```
+
+```{r}
+results <- dat_all 
+colnames(results) <- c( "Cluster", "Coefficient", "Coefficient_std_error", "Coefficient_P_value", "Trait", "Set")
+```
+
+```{r, fig.height=8, fig.width=6, cache=T}
+traits <- c(
+  "Arvanitis.NatCommun.2019.Heart_Failure",
+  "Aylward.2018.biorxiv.Type_1_Diabetes",
+  "Barban.NatGenet.2016.Age_First_Birth",
+  "Barban.NatGenet.2016.Number_Children_Born",
+  "Bentham.NatGenet.2015.Lupus",
+  "Cordell.NatCommun.2015.Primary_Biliary_Cirrhosis",
+  "Deary.MolPsychiatry.2017.Tiredness",
+  "deLange.NatGenet.2017.Crohns_Disease",
+  "deLange.NatGenet.2017.Inflammatory_Bowel_Disease",
+  "deLange.NatGenet.2017.Ulcerative_Colitis",
+  "Demenais.NatGenet.2018.Asthma",
+#  "Demontis.biorxiv.2017.Attention_Deficit_Hyperactivity_Disorder",
+  "Demontis.NatGenet.2019.Attention_Deficit_Hyperactivity_Disorder",
+  "denHoed.NatGenet.2013.Heart_Rate",
+  "Dubois.NatGenet.2010.Celiac_Disease",
+  "Dubois.NatGenet.2010.Celiacs_Disease",
+#  "Duncan.AmJPsychiatry.2017.Anorexia_Nervosa",
+  "Dupuis.NatGenet.2010.HOMA-B",
+  "Dupuis.NatGenet.2010.HOMA-IR",
+  "EAGLE.AmJMedGenet.2016.Childhood_Aggression",
+  "EAGLE.NatGenet.2015.Atopic_Dermatitis",
+#  "Felix.HumMolGenet.2015.Childhood_BMI",
+  "Ferreira.NatGenet.2017.Allergy",
+  "GLGC.NatGenet.2013.HDL_Cholesterol",
+  "GLGC.NatGenet.2013.LDL_Cholesterol",
+  "GLGC.NatGenet.2013.Total_Cholesterol",
+  "GLGC.NatGenet.2013.Triglycerides",
+#  "Grove.biorxiv.2018.Autism_Spectrum_Disorder",
+  "Grove.NatGenet.2019.Autism_Spectrum_Disorder",
+#  "Hammerschlag.NatGenet.2017.Insomnia",
+  "Horikoshi.Nature.2016.Birth_Weight",
+  "Hou.HumMolGenet.2016.Bipolar_Disorder",
+  "IMSGC.NatGenet.2011.Multiple_Sclerosis",
+  "Jansen.2019.NatGenet.Insomnia",
+  "Jiang.NatGenet.2018.Vitamin_D",
+  "Ji.NatGenet.2017.Primary_Sclerosing_Cholangitis",
+  "Jin.NatGenet.2016.Vitiligo",
+  "Jones.PLOSGen.2016.Chronotype",
+  "Jones.PLOSGen.2016.Sleep_Duration",
+  "Lambert.NatGenet.2013.Alzheimers_Disease",
+  "Locke.Nature.2015.BMI",
+  "Luciano.NatGenet.2017.Neuroticism",
+  "Mahajan.NatGenet.2018.Type_2_Diabetes",
+  "Malik.2018.NatGenet.Stroke",
+#  "Manning.NatGenet.2012.Fasting_Glucose_adj_BMI",
+  "Manning.NatGenet.2012.Fasting_Glucose",
+#  "Manning.NatGenet.2012.Fasting_Insulin_adj_BMI",
+  "Manning.NatGenet.2012.Fasting_Insulin",
+  "Marinelli.Sleep.2016.Child_Sleep_Duration",
+  "Nelson.NatGenet.2017.Coronary_Artery_Disease",
+  "Nielson.2018.NatGenet.Atrial_Fibrillation",
+  "Okada.Nature.2014.Rheumatoid_Arthritis",
+  "Okbay.Nature.2016.Educational_Attainment",
+  "Pattaro.NatCommun.2016.Chronic_Kidney_Disease",
+  "PGC.MolPsychiatry.2017.Obsessive_Compulsive_Disorder",
+  "PGC.MolPsychiatry.2017.Post_Traumatic_Stress_Disorder",
+  "PGC.Nature.2014.Schizophrenia",
+  "ReproGen.NatGenet.2015.Age_At_Menopause",
+  "ReproGen.NatGenet.2017.Age_At_Menarche",
+  "SAIGE.UKBB.2018.Tobacco_use_disorder",
+  "Savage.NatGenet.2018.Intelligence",
+#  "Saxena.NatGenet.2010.2hr_Glucose_adj_BMI",
+#  "Saxena.NatGenet.2010.2hr_Glucose_adjBMI",
+  "Schumann.PNAS.2016.Alcohol_Usage",
+#  "Sniekers.NatGenet.2017.Intelligence",
+#  "Stahl.2018.biorxiv.Bipolar_Disorder",
+  "Strawbridge.Diabetes.2011.Fasting_ProInsulin",
+  "Taal.NatGenet.2012.Head_Circumference",
+  "Teumer.Diabetes.2016.Microalbuminuria",
+  "vandenBerg.BehavGenet.2016.Extraversion",
+  "vanderValk.HumMolGenet.2014.Birth_Length",
+  "vanRheenen.NatGenet.2016.Amyotrophic_Lateral_Sclerosis",
+  "Watson.2018.NatGenet.Anorexia_Nervosa",
+  "Wheeler.PlosMed.2017.HbA1c",
+  "Wray.biorxiv.2018.Major_Depressive_Disorder",
+#  "Yengo.biorxiv.2018.BMI",
+  "Yengo.biorxiv.2018.Height"
+)
+
+```
+
+```{r cache=T}
+cls <- results %>%
+  filter(Coefficient_P_value < 0.05 & Trait %in% traits) %>%
+  select(Cluster) %>%
+  distinct() %>%
+  pull()
+
+cluster_traits <- results %>%
+  filter(Trait %in% traits & Cluster %in% cls) %>%
+  group_by(Trait) %>%
+  mutate(FDR = p.adjust(Coefficient_P_value, method = "fdr")) %>%
+  ungroup() %>%
+  arrange(FDR)
+
+mat <- results %>%
+  filter(Cluster %in% cls & Trait %in% traits) %>%
+  #mutate(enrich = -log10(Coefficient_P_value)) %>%
+  mutate(enrich = Coefficient / Coefficient_std_error) %>%
+  select(Cluster, Trait, enrich) %>%
+  filter(!grepl("adj_BMI", Trait)) %>%
+  spread(Trait, enrich)
+
+rownames(mat) <- mat$Cluster
+colnames(mat) <- gsub(".*[.]", "", gsub("UKBB_", "", colnames(mat)))
+mat <- data.frame(mat)
+mat$Cluster <- NULL
+
+mat_p <- cluster_traits %>%
+  filter(Cluster %in% cls & Trait %in% traits) %>%
+  mutate(enrich = FDR) %>%
+  select(Cluster, Trait, enrich) %>%
+  filter(!grepl("adj_BMI", Trait)) %>%
+  spread(Trait, enrich)
+
+rownames(mat_p) <- mat_p$Cluster
+colnames(mat_p) <- gsub(".*[.]", "", gsub("UKBB_", "", colnames(mat_p)))
+mat_p <- data.frame(mat_p)
+mat_p$Cluster <- NULL
+
+anno <- matrix("", nrow = nrow(mat), ncol = ncol(mat))
+colnames(anno) <- colnames(mat)
+rownames(anno) <- rownames(mat)
+anno[mat_p<0.1] <- "-"
+anno[mat_p<0.05] <- "*"
+anno[mat_p<0.01] <- "**"
+anno[mat_p<0.001] <- "***"
+
+hclust_rows <- sort_hclust(hclust(dist(mat), method = "ward.D2"))
+hclust_cols <- hclust(dist(t(mat)),method = "ward.D2")
+
+pdf("rs1cemba.ldsc.heatmap.pdf", height = 12, width = 12)
+pheatmap(mat,
+         color = colorRampPalette(rev(brewer.pal(n = 7, name = "RdBu")))(80),
+         breaks = seq(-2, 6, 0.1),
+         fontsize_row = 8,
+         fontsize_col = 8,
+         display_numbers = anno,
+         fontsize_number = 8,
+         labels_col = gsub("_", " ", colnames(mat)),
+         labels_row = rownames(mat),
+#         annotation_row = row_label,
+#         annotation_colors = ann_colors,
+         cluster_cols = hclust_cols,
+         cluster_rows = hclust_rows,
+         angle_col = 45,
+         main = "GWAS on CEMBA clusters"
+         #labels_row = labels[match(gsub("cluster_", "", rownames(mat)), labels$clu), ] %>% pull(name),
+         )
+dev.off()
+
+```

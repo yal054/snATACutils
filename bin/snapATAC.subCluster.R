@@ -43,7 +43,7 @@ outF = args$output
 #--------------------------------
 x.sp <- get(load(RDataF))
 cnt2sample <- table(x.sp@sample)
-sampleName <- names(which(cnt2sample==1))
+sampleName <- names(which(cnt2sample<=10))
 idx <- which(x.sp@sample %in% sampleName)
 if(length(idx)>=1){
 x.sp <- x.sp[-idx, ]
