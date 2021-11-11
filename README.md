@@ -29,7 +29,11 @@
 > Clustering of shared and cell-type specific candidate cis-regulatory elements (cCREs)
 > Identification of cell-type/regional specific cCREs
 
-### - others
+#### - 05.LDSC analysis
+> Linkage disequilibrium score regression (LDSR or LDSC) analysis on cis-regulatory elements (cCREs)
+> based on summary statistics from genome-wide association studies (GWASs)
+
+#### - others
 > We shared few useful scripts in folder bin/:
 > - phastCons score calculation in genomic regions;
 > - script for generating IGV session file, which can be directly load to genome browser
