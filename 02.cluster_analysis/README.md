@@ -2,7 +2,7 @@
 
 ### refine the resolution of cluster
 
-```bash
+```{bash}
 path2script=/path_to_scripts/snATACutils/bin
 
 mkdir refineCluster
@@ -28,7 +28,7 @@ cbTool mtx2tsv ${prefix_name}.gmat.mtx ${prefix_name}.gene.tsv ${prefix_name}.ce
 ```
 
 Load dataset to UCSC cell browser
-```bash
+```{bash}
 bash $path2script/cb.createConf.sh -i ${prefix_name} -o ./
 cbBuild -o /path_to_cellbrowser/
 ```
@@ -36,7 +36,7 @@ cbBuild -o /path_to_cellbrowser/
 ### Usage of scripts
 
 - snapATAC.leiden.py
-```bash
+```{bash}
 $ python bin/snapATAC.leiden.py -h
 
 usage: snapATAC.leiden.py [-h] [-i INPUT] [-r RESOLUTION] [-o OUTPUT]
@@ -53,7 +53,7 @@ optional arguments:
 ```
 
 - snapATAC.refineCluster.R
-```bash
+```{bash}
 $ Rscript bin/snapATAC.refineCluster.R -h
 usage: bin/snapATAC.refineCluster.R [-h] -i INPUT -p PARTITION -o OUTPUT
 
@@ -68,7 +68,7 @@ optional arguments:
 ```
 
 - snapATAC.consensusLeiden.py
-```bash
+```{bash}
 $ python bin/snapATAC.consensusLeiden.py -h
 usage: snapATAC.consensusLeiden.py [-h] [-i INPUT] [-r RESOLUTION] [--u1 U1]
                                    [--u2 U2] [-n N] [-o OUTPUT]
@@ -88,7 +88,7 @@ optional arguments:
 ```
 
 - snapATAC.snap2cb.R
-```bash
+```{bash}
 $ Rscript bin/snapATAC.snap2cb.R -h
 usage: bin/snapATAC.snap2cb.R [-h] -i INPUT -o OUTPUT
 
