@@ -1,6 +1,6 @@
 # snATACutils
 
-## The utilities for single nucleus iATAC-seq analysis.
+## The utilities for single nucleus ATAC-seq analysis.
 * Please find useful scirpts and codes in folder `bin`.
 * We dissect the analysis into multiple steps, detailed description can be find in corresponding folders.
 * This package is still under active development.
