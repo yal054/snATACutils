@@ -1,7 +1,8 @@
 # 03.peak calling
 
 ### 03.0 env setting
-```bash
+```{bash}
+path0=/path_to_project
 path1=/path_to_working_dir
 path2script=/projects/ps-renlab/yangli/scripts/snATACutils/bin
 
@@ -12,34 +13,31 @@ function loadavg {
 
 you need to create one txt file for sample info, such as:
 mba.dataset.list
-```
-sample  group   techRep donor   region
-sample1  Cortex  1       1       MOp
-sample2  Cortex  1       1       MOp
-sample3  Cortex  1       2       SSp
-...
-```
+
+> sample  group   techRep donor   region
+> sample1  Cortex  1       1       MOp
+> sample2  Cortex  1       1       MOp
+> sample3  Cortex  1       2       SSp
+> ...
 
 you will also need a txt file for listing used clusters (one-column), such as:
 cluster.list
-```
-ASC
-OPC
-OGC
-MGC
-ITL23
-ITL4
-ITL5
-ITL56
-ITL6
-```
 
+> ASC
+> OPC
+> OGC
+> MGC
+> ITL23
+> ITL4
+> ITL5
+> ITL6
+> ...
 
 ### 03.1 extracting reads
-```bash
+```{bash}
 cd $path1
 mkdir bedpe qsub log; cd bedpe
-path2data=/projects/ps-renlab/yangli/projects/HBA/00.data
+path2data=/projects/ps-renlab/yangli/projects/CEMBA/00.data
 
 for i in `sed '1d' ../mba.dataset.list | cut -f 1`;
 do echo $i;
@@ -47,7 +45,7 @@ ln -s $path2data/${i}/${i}.bedpe.gz .
 done;
 
 cd $path1
-cat /projects/ps-renlab/yangli/projects/HBA/01.cluster/mba.cerebrum.cell2anno.txt | sed -e "s/subclass/cluster/g" > mba.cerebrum.cell2anno.txt 
+cat /projects/ps-renlab/yangli/projects/CEMBA/01.cluster/mba.cerebrum.cell2anno.txt | sed -e "s/subclass/cluster/g" > mba.cerebrum.cell2anno.txt 
 echo -e "
 #!/bin/bash
 
@@ -60,8 +58,8 @@ echo -e "
 #PBS -A ren-group
 #PBS -j oe
 
-path0=/oasis/tscc/scratch/yangli1/projects/HBA
-path1=/oasis/tscc/scratch/yangli1/projects/HBA/03.peakcall
+path0=/oasis/tscc/scratch/yangli1/projects/CEMBA
+path1=/oasis/tscc/scratch/yangli1/projects/CEMBA/03.peakcall
 path2script=/projects/ps-renlab/yangli/scripts/snATACutils
 cd \$path1
 
@@ -71,7 +69,7 @@ qsub $path1/qsub/mba.cerebrum.extract_from_bedpe.qsub -o $path1/log/mba.cerebrum
 ```
 
 alternative approach: extracting reads in sam/bam format
-```bash
+```{bash}
 python $path2script/snapATAC.extract_from_bam.py --cluster $path1/mba.cerebrum.cell2anno.txt --indir $path0/00.data/bam/ --outprfx $path1/bam/mba.cerebrum
 
 for i in `cat cluster.list`;
@@ -82,14 +80,14 @@ done
 ```
 
 ### 03.2 peak calling
-```bash
+```{bash}
 cd $path1
 mkdir tagAlign tnf5_tag peaks bw
 sed -e "1d" mba.cerebrum.cell2anno.txt | cut -f 4 | sort | uniq > cluster.list
 ```
 - peak calling for every cluster
 
-```bash
+```{bash}
 for i in `cat cluster.list`;
 do echo $i;
 echo -e "
@@ -104,8 +102,8 @@ echo -e "
 #PBS -A ren-group
 #PBS -j oe
 
-path0=/oasis/tscc/scratch/yangli1/projects/HBA
-path1=/oasis/tscc/scratch/yangli1/projects/HBA/03.peakcall
+path0=/oasis/tscc/scratch/yangli1/projects/CEMBA
+path1=/oasis/tscc/scratch/yangli1/projects/CEMBA/03.peakcall
 path2script=/projects/ps-renlab/yangli/scripts/snATACutils
 
 . ~/.bashrc
@@ -122,7 +120,9 @@ qsub $path1/qsub/${i}.peak.qsub -o $path1/log/${i}.peak.log -e $path1/log/${i}.p
 done
 ```
 
-# bio repl
+- peak calling for biological replicates
+
+```{bash}
 sed '1d' mba.dataset.list | awk '{print $1>>"mba.cerebrum.data.rep"$5}'
 
 for i in `cat cluster.list`;
@@ -139,8 +139,8 @@ echo -e "
 #PBS -A ren-group
 #PBS -j oe
 
-path0=/oasis/tscc/scratch/yangli1/projects/HBA
-path1=/oasis/tscc/scratch/yangli1/projects/HBA/03.peakcall
+path0=/oasis/tscc/scratch/yangli1/projects/CEMBA
+path1=/oasis/tscc/scratch/yangli1/projects/CEMBA/03.peakcall
 path2script=/projects/ps-renlab/yangli/scripts/snATACutils
 
 . ~/.bashrc
@@ -159,9 +159,11 @@ zcat tagAlign/${i}.rep2.tagAlign.gz | awk 'BEGIN{OFS=FS=\"\\\t\"}{ if (\$6 == \"
 " | sed '1d' > $path1/qsub/${i}.peak2rep.qsub
 qsub $path1/qsub/${i}.peak2rep.qsub -o $path1/log/${i}.peak2rep.log -e $path1/log/${i}.peak2rep.err
 done
+```
 
+- peak calling for  pseudo replicates
 
-# pseudo repl
+```{bash}
 for i in `cat cluster.list`;
 do echo $i;
 echo -e "
@@ -176,8 +178,8 @@ echo -e "
 #PBS -A ren-group
 #PBS -j oe
 
-path0=/oasis/tscc/scratch/yangli1/projects/HBA
-path1=/oasis/tscc/scratch/yangli1/projects/HBA/03.peakcall
+path0=/oasis/tscc/scratch/yangli1/projects/CEMBA
+path1=/oasis/tscc/scratch/yangli1/projects/CEMBA/03.peakcall
 path2script=/projects/ps-renlab/yangli/scripts/snATACutils
 
 . ~/.bashrc
@@ -214,12 +216,10 @@ echo 'Done'
 " | sed '1d' > $path1/qsub/${i}.peak2pseudo.qsub
 qsub $path1/qsub/${i}.peak2pseudo.qsub -o $path1/log/${i}.peak2pseudo.log -e $path1/log/${i}.peak2pseudo.err
 done
+```
 
-
-####################
-# parse peaks
-
-# check files
+-  check files
+```{bash}
 for i in `cat cluster.list`;
 do echo $i;
 POOLED_PEAK="peaks/${i}_peaks.narrowPeak"
@@ -251,13 +251,13 @@ ll $REP2_PEAK >> checkfiles.txt
 ll $PSEUDO1_PEAK >> checkfiles.txt
 ll $PSEUDO2_PEAK >> checkfiles.txt
 done;
+```
 
+### 03.3 parsing peaks
 
-# navie overlap
-path0=/oasis/tscc/scratch/yangli1/projects/HBA
-path1=/oasis/tscc/scratch/yangli1/projects/HBA/03.peakcall
-path2script=/projects/ps-renlab/yangli/scripts/snATACutils
+- navie overlap
 
+```{bash}
 mkdir parsePeak
 
 for i in `cat cluster.list`;
@@ -295,242 +295,33 @@ join -1 1 -2 4 <(zcat ${naivePeakList} | cut -f 4 | sort) <(sort -k4,4 ${POOLED_
 
 echo -e "${i}\t${path1}/${naiveSummitList}" >> mba.cerebrum.naiveSummitList.list 
 done
+```
 
+- iterative overlap peak merging
 
-# iterative_overlap_peak_merging
-
-path1=/projects/ps-renlab/yangli/projects/HBA/03.peakcall
-
-Rscript $path1/bin/iterative_overlap_peak_merging.R -i mba.cerebrum.naiveSummitList.list \
+```{r}
+Rscript $path2script/iterative_overlap_peak_merging.R -i mba.cerebrum.naiveSummitList.list \
         -g hg38 \
         --blacklist /projects/ps-renlab/yangli/genome/GRCh38.p12/hg38.blacklist.bed.gz \
         --chromSize /projects/ps-renlab/yangli/genome/GRCh38.p12/GRCh38.p12.chrom.sizes \
         -d parsePeak/ -o mba.cerebrum
 
-# SPM >= 5 
+# filter by "Score per Million" (SPM) >= 5 
 sed '1d' parsePeak/mba.cerebrum.filteredNfixed.union.peakSet | awk 'BEGIN{FS=OFS="\t"}($11>=5){print $1,$2,$3,$7,$6}' | sort -k1,1 -k2,2n | uniq > mba.cerebrum.filteredNfixed.union.bed
 awk 'BEGIN{FS=OFS="\t"}{print $1,$2,$3,"peak"NR,$5}' mba.cerebrum.filteredNfixed.union.bed > mba.cerebrum.union.peaks.bed
+```
 
+-  assign to cell subclass
 
-# assign to subclass
+```{bash}
 mkdir subclass
 for i in `cat cluster.list`;
 do echo $i;
 intersectBed -wa -a mba.cerebrum.union.peaks.bed -b <(sed -e "1d" parsePeak/${i}.filterNfixed.peakset) > subclass/mba.cerebrum.subclass.${i}.bed
 done;
-
-#------------------
-# super enhancer
-# using homer
-mkdir tags
-
-source /projects/ps-renlab/yangli/scripts/bgx.sh
-group1="tags"
-bgxgrp=${group1}
-
-for i in `cat cluster.list`;
-do echo $i;
-bgxlimit 5 makeTagDirectory tags/${i}/ tnf5_tag/mba.cerebrum.cluster.${i}.tnf5_tag.gz -format bed ; group1=${bgxgrp}
-bgxlimit 5 findPeaks tags/${i}/ -style super -o auto ; group1=${bgxgrp}
-done;
-
-path2ftp=/projects/ps-renlab/yangli/public_html/HBA/03.peakcall/superEnh
-for i in `cat cluster.list`; 
-do echo $i; 
-pos2bed.pl tags/${i}/superEnhancers.txt |grep -v "#" | grep 'chr' | sort -k1,1 -k2,2n | uniq > /projects/ps-renlab/yangli/public_html/HBA/03.peakcall/superEnh/${i}.superEnhancers.bed; 
-intersectBed -v -wa -a ${path2ftp}/${i}.superEnhancers.bed -b /projects/ps-renlab/yangli/genome/GRCh38.p12/gencode.v29.tss5k.bed | awk -v a=${i} 'BEGIN{FS=OFS="\t"}{print $1,$2,$3,a"_SE"NR}' > ${path2ftp}/${i}.superEnhancers.distal.bed
-annotatePeaks.pl ${path2ftp}/${i}.superEnhancers.distal.bed hg38 > ${path2ftp}/${i}.superEnhancers.distal.anno.txt
-done
-
-# overlap with database
-# HeRA (HUman enhancer RNA Atlas)
-# https://hanlab.uth.edu/HeRA/download
-mkdir superEnh
-
-for i in `cat cluster.list`;
-do echo $i;
-pos2bed.pl tags/${i}/superEnhancers.txt |grep -v "#" | grep 'chr' | sort -k1,1 -k2,2n | uniq > superEnh/${i}.superEnhancers.bed
-intersectBed -v -wa -a superEnh/${i}.superEnhancers.bed -b /projects/ps-renlab/yangli/genome/GRCh38.p12/gencode.v29.tss5k.bed | awk -v a=${i} 'BEGIN{FS=OFS="\t"}{print $1,$2,$3,a"_SE"NR}' > superEnh/${i}.superEnhancers.distal.bed
-done;
-
-cd superEnh
-path2src=/projects/ps-renlab/yangli/resource/HeRA
-ln -s $path2src/Brain_Cortex.eRNA.bed .
-ln -s $path2src/Brain_Cortex.eRNA.meta.bed .
-
-for i in `cat ../cluster.list`;
-do echo $i;
-intersectBed -wao -a ${i}.superEnhancers.distal.bed -b Brain_Cortex.eRNA.bed | awk '$5!="."' > ${i}.superEnhancers.distal.eRNA.ovlp
-join -1 1 -2 1 <(cut -f 4,5,7,13,15 Brain_Cortex.eRNA.meta.bed | sort -k1,1) \
-               <(cat ${i}.superEnhancers.distal.eRNA.ovlp | awk 'BEGIN{FS=OFS="\t"}{print $8,$5,$6,$7, $1":"$2"-"$3"|"$4}' | sort -k1,1) -t$'\t' |\
-               awk 'BEGIN{FS=OFS="\t"}{print $6,$7,$8,$1,$2,".",$3,$4,$5,$9}' | sort -k1,1 -k2,2n | uniq |\ 
-               sed -e "1i chr\tstart\tend\teRNA\tavgExp\tstrand\tsymbol\trho\tfdr\tse"> ${i}.superEnhancers.distal.eRNA.ovlp.target.txt
-done;
+```
 
 
-
-###################
-# count pmat in snap
-
-mkdir snap
-for i in `sed '1d' mba.dataset.list | cut -f 1`;
-do echo $i;
-cp /projects/ps-renlab/yangli/projects/HBA/00.data/${i}/${i}.snap snap/
-done;
-
-for i in `sed '1d' mba.dataset.list | cut -f 1`;
-do echo $i;
-echo -e "
-#!/bin/bash
-
-#PBS -q hotel
-#PBS -N ${i}.pmat
-#PBS -l nodes=1:ppn=1,walltime=24:00:00
-#PBS -V
-#PBS -M yangericlisd@gmail.com
-#PBS -m a
-#PBS -A ren-group
-#PBS -j oe
-
-path0=/projects/ps-renlab/yangli/projects/HBA
-path1=/projects/ps-renlab/yangli/projects/HBA/03.peakcall
-. ~/.bashrc
-cd \$path1
-
-/home/yangli1/apps/anaconda2/bin/snaptools snap-del \
-        --snap-file=snap/${i}.snap \
-        --session-name=PM
-
-/home/yangli1/apps/anaconda2/bin/snaptools snap-add-pmat \
-        --snap-file=snap/${i}.snap \
-        --peak-file=mba.cerebrum.union.peaks.bed \
-        --verbose=True
-echo 'Done'
-" | sed '1d' > $path1/qsub/${i}.add2pmat.qsub
-qsub $path1/qsub/${i}.add2pmat.qsub -o $path1/log/${i}.add2pmat.log
-done;
-
-
-##############################
-# count to pmat
-path0=/projects/ps-renlab/yangli/projects/HBA
-path1=/projects/ps-renlab/yangli/projects/HBA/03.peakcall
-path2script=/projects/ps-renlab/yangli/scripts/snATACutils
-
-mkdir RData; cd RData
-ln -s ../../01.cluster/mba.cerebrum.cell2anno.RData .
-
-Rscript $path0/bin/snapATAC.subsetRDataByAttr.R -i mba.cerebrum.cell2anno.RData -a subclass -t 4 -o mba.cerebrum
-
-mkdir parsePmat
-for i in `cat cluster.list`;
-do echo $i;
-Rscript $path0/bin/snapATAC.parsePmat.R -i RData/mba.cerebrum.${i}.sub.RData \
-                                       --cpu 6 --path2snap /projects/ps-renlab/yangli/projects/HBA/03.peakcall/snap/ \
-                                       -o parsePmat/mba.cerebrum.${i}
-
-cut -f 6 parsePmat/mba.cerebrum.${i}.parsePmat.txt | sed -e "1d" | sed -e "1i ${i}" > parsePmat/mba.cerebrum.${i}.parsePmat.tmp
-done;
-
-cut -f 1 parsePmat/mba.cerebrum.ASC.parsePmat.txt > parsePmat/header
-paste parsePmat/header parsePmat/mba.cerebrum.*.parsePmat.tmp > parsePmat/mba.cerebrum.parsePmat.CPMnorm.tsv
-
-
-##############################
-# NMF on pmat
-mkdir nmfPmat
-
-##############################
-# assign color to cluster
-
-# https://medialab.github.io/iwanthue/
-# mba.cerebrum.color2anno.txt
-
-##############################
-# sta on peaks
-# reciprocal liftOver
-
-mkdir sta; cd sta
-ln -s ../mba.cerebrum.union.peaks.bed .
-
-# annotation 
-annotatePeaks.pl mba.cerebrum.union.peaks.bed hg38 > mba.cerebrum.union.peaks.annot.txt
-
-wget http://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/mm10ToHg38.over.chain.gz
-wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToMm10.over.chain.gz
-
-
-hg38ToMm10="hg38ToMm10.over.chain.gz"
-mm10ToHg38="mm10ToHg38.over.chain.gz"
-usedPeak=mba.cerebrum.union.peaks.bed
-
-for i in 95 75 50 25 10;
-do echo $i;
-liftOver ${usedPeak} ${hg38ToMm10} mba.cerebrum.union.peaks.${i}.hg38ToMm10.bed mba.cerebrum.union.peaks.${i}.hg38ToMm10.unmapped -minMatch=0.${i} & 
-liftOver mba.cerebrum.union.peaks.${i}.hg38ToMm10.bed ${mm10ToHg38} mba.cerebrum.union.peaks.${i}.hg38ToMm10.backToHg38.bed mba.cerebrum.union.peaks.${i}.hg38ToMm10.backToHg38.unmapped -minMatch=0.10 &
-# check if exactly match to orginal hg38
-intersectBed -wao -r -f 0.5 -a mba.cerebrum.union.peaks.${i}.hg38ToMm10.backToHg38.bed -b ${usedPeak} | awk '$5!="."' | awk '$4==$8' | cut -f 4 | sort | uniq > mba.cerebrum.union.peaks.${i}.hg38ToMm10.backToHg38.matched.peaks
-join -1 1 -2 4 mba.cerebrum.union.peaks.${i}.hg38ToMm10.backToHg38.matched.peaks <(sort -k4,4 mba.cerebrum.union.peaks.${i}.hg38ToMm10.bed | uniq) -t$'\t' | awk 'BEGIN{FS=OFS="\t"}{print $2,$3,$4,$1}' | sort -k1,1 -k2,2n | uniq > mba.cerebrum.union.peaks.${i}.reciprocalToMm10.bed 
-done;
-
-
-###############################3
-# regional tracks
-
-path0=/oasis/tscc/scratch/yangli1/projects/HBA
-path1=/oasis/tscc/scratch/yangli1/projects/HBA/03.peakcall
-path2script=/projects/ps-renlab/yangli/scripts/snATACutils/bin
-
-mkdir bw.region
-
-for i in ITL23 MSN;
-do echo $i;
-grep ${i} mba.cerebrum.cluster2anno.meta.txt | awk 'BEGIN{FS=OFS="\t"}{print $7,$1,$21,$22,$12}' | sed '1i sample\tbarcode\tclass\tsubclass\tcluster' > bw.region/mba.cerebrum.${i}.meta.txt
-echo -e "
-#!/bin/bash
-
-#PBS -q hotel
-#PBS -N extract_from_bam
-#PBS -l nodes=1:ppn=6,walltime=24:00:00
-#PBS -V
-#PBS -M yangericlisd@gmail.com
-#PBS -m a
-#PBS -A ren-group
-#PBS -j oe
-
-path0=/oasis/tscc/scratch/yangli1/projects/HBA
-path1=/oasis/tscc/scratch/yangli1/projects/HBA/03.peakcall
-path2script=/projects/ps-renlab/yangli/scripts/snATACutils/bin
-cd \$path1
-
-python \$path2script/snapATAC.extract_from_bam.py --cluster \$path1/bw.region/mba.cerebrum.${i}.meta.txt --indir \$path0/00.data/bam/ --outprfx \$path1/bw.region/mba.cerebrum.${i}
-" | sed '1d' > $path1/qsub/mba.cerebrum.${i}.extract_from_bam.qsub
-qsub $path1/qsub/mba.cerebrum.${i}.extract_from_bam.qsub -o $path1/log/mba.cerebrum.${i}.extract_from_bam.log
-done;
-
-
-cp -r /oasis/tscc/scratch/yangli1/projects/HBA/03.peakcall/bw.region /projects/ps-renlab/yangli/projects/HBA/03.peakcall
-
-# convert sam to bam
-cd /projects/ps-renlab/yangli/projects/HBA/03.peakcall
-cd bw.region/
-
-source /projects/ps-renlab/yangli/scripts/bgx.sh
-group1="sam2bam"
-bgxgrp=${group1}
-
-for i in `ls | grep 'sam'`;
-do j=${i%.*}
-echo $i;
-bgxlimit 5 samtools view -S -b ${j}.sam | samtools sort - > ${j}.bam ; group1=${bgxgrp}
-done;
-
-for i in `ls | grep 'sam'`;
-do j=${i%.*}
-echo $j;
-samtools index ${j}.bam &
-bamCoverage -b ${j}.bam --normalizeUsing RPKM -o ${j}.cov.bw
-done
 
 
 
