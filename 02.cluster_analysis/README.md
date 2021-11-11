@@ -22,7 +22,7 @@ ln -s refineCluster/hba.cortex.${r}.refineCluster.meta.txt hba.cortex.refineClus
 ### export to UCSC cell browser
 
 Dumping snapATAC R obj to matrix
-```bash
+```{bash}
 Rscript $path2script/snapATAC.snap2cb.R -i ${snapObj}.RData -o ${prefix_name}
 cbTool mtx2tsv ${prefix_name}.gmat.mtx ${prefix_name}.gene.tsv ${prefix_name}.cell.tsv exprMatrix.tsv.gz
 ```

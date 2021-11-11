@@ -24,6 +24,7 @@ library(tictoc)
 
 inF = args$input
 blacklistF = args$blacklist
+genome = args$genome
 chromF = args$chromSize
 outDir = args$dir
 outF = args$output
@@ -90,7 +91,7 @@ filter4chrom <- function(gr, chromF){
 
 
 # filter N containing regions
-filter4N <- function(gr, genome="mm10"){
+filter4N <- function(gr, genome=genome){
   genome <- getBSgenome(genome)
   nucFreq <- BSgenome::alphabetFrequency(getSeq(genome, gr))
   mcols(gr)$GC <- round(rowSums(nucFreq[,c("G","C")]) / rowSums(nucFreq),4)
@@ -114,10 +115,10 @@ filter4N <- function(gr, genome="mm10"){
 #' @param verbose A boolean value indicating whether the output should include extra reporting.
 #' @export
 nonOverlappingGR <- function(
-	gr = NULL, 
-	by = "score", 
-	decreasing = TRUE, 
-	verbose = FALSE
+    gr = NULL, 
+    by = "score", 
+    decreasing = TRUE, 
+    verbose = FALSE
   ){
   
   stopifnot(by %in% colnames(mcols(gr)))
@@ -205,7 +206,7 @@ peak.list = lapply(seq(file.lst), function(i){
   p.gr <- extendSummit(p.gr, size=500)
   p.gr <- filter4blacklist(p.gr, blacklistF)
   p.gr <- filter4chrom(p.gr, chromF)
-  p.gr <- filter4N(p.gr, genome="mm10")
+  p.gr <- filter4N(p.gr, genome=genome)
   p.gr <- nonOverlappingGR(p.gr, by = "score", decreasing = TRUE)
   p.gr <- norm2spm(p.gr, by="score")
   p.gr
@@ -221,7 +222,6 @@ for(i in 1:length(label.lst)){
   fwrite(outPeak, file=outFname, sep="\t", quote = F, col.names = T, row.names = F)
 }
 toc()
-
 
 
 tic("merge to union peak list")
