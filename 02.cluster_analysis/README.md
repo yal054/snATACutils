@@ -33,5 +33,71 @@ bash $path2script/cb.createConf.sh -i ${prefix_name} -o ./
 cbBuild -o /path_to_cellbrowser/
 ```
 
+### Usage of scripts
+
+- snapATAC.leiden.py
+```bash
+$ python bin/snapATAC.leiden.py -h
+
+usage: snapATAC.leiden.py [-h] [-i INPUT] [-r RESOLUTION] [-o OUTPUT]
+
+leiden on 3-cols knn sparse matrix
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT, --in INPUT  input 3-col file: peak, cell, ct
+  -r RESOLUTION, --resolution RESOLUTION
+                        resolution from 0-1
+  -o OUTPUT, --out OUTPUT
+                        prefix of output file
+```
+
+- snapATAC.refineCluster.R
+```bash
+$ Rscript bin/snapATAC.refineCluster.R -h
+usage: bin/snapATAC.refineCluster.R [-h] -i INPUT -p PARTITION -o OUTPUT
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT, --input INPUT
+                        load preprocessed RData
+  -p PARTITION, --partition PARTITION
+                        partition for python-leiden
+  -o OUTPUT, --output OUTPUT
+                        output file prefix
+```
+
+- snapATAC.consensusLeiden.py
+```bash
+$ python bin/snapATAC.consensusLeiden.py -h
+usage: snapATAC.consensusLeiden.py [-h] [-i INPUT] [-r RESOLUTION] [--u1 U1]
+                                   [--u2 U2] [-n N] [-o OUTPUT]
+
+leiden on 3-cols knn sparse matrix
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT, --in INPUT  input 3-col file: peak, cell, ct
+  -r RESOLUTION, --resolution RESOLUTION
+                        resolution from 0-1
+  --u1 U1               left interval cutoff of CDF
+  --u2 U2               right interval cutoff of CDF
+  -n N                  iteration of N time
+  -o OUTPUT, --out OUTPUT
+                        prefix of output file
+```
+
+- snapATAC.snap2cb.R
+```bash
+$ Rscript bin/snapATAC.snap2cb.R -h
+usage: bin/snapATAC.snap2cb.R [-h] -i INPUT -o OUTPUT
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT, --input INPUT
+                        load preprocessed RData
+  -o OUTPUT, --output OUTPUT
+                        output file prefix
+```
 
 
