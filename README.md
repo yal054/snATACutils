@@ -30,7 +30,7 @@
 > Identification of cell-type/regional specific cCREs
 
 ### - others
-> We shared few useful scripts:
+> We shared few useful scripts in folder bin/:
 > - phastCons score calculation in genomic regions;
 > - script for generating IGV session file, which can be directly load to genome browser
 > - loomR to seurat object convertor
