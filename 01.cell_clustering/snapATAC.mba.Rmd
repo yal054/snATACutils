@@ -1,0 +1,908 @@
+---
+title: "snapATAC.mba"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+suppressPackageStartupMessages(library("SnapATAC"))
+suppressPackageStartupMessages(library("GenomicRanges"));
+suppressPackageStartupMessages(library("data.table"))
+suppressPackageStartupMessages(library("plyr"))
+suppressPackageStartupMessages(library("foreach"))
+suppressPackageStartupMessages(library("doParallel"))
+library("umap")
+library("leiden")
+library("tictoc")
+
+suppressPackageStartupMessages(library("ggplot2"));
+suppressPackageStartupMessages(library("RColorBrewer"))
+suppressPackageStartupMessages(library("viridis"))
+suppressPackageStartupMessages(library("reshape2"))
+```
+
+
+```{r}
+inputf <- "mba.snap.list"
+bin_size <- 10000
+sumf <- "/projects/ps-renlab/yangli/projects/CEMBA/01.cluster/mba.barcode.summary.txt"
+black_list <- "/projects/ps-renlab/yangli/genome/mm10/mm10.blacklist.bed.gz"
+pc_num <- 50
+cpus <- 1
+#outF <- "mba.whole"
+outF <- "mba.full"
+seed.use <- 2021
+dims <- 30
+genef <- "gene.markers.txt"
+resolution <- 0.5
+```
+
+
+```{r}
+inputF <- read.table(inputf,sep="\t",header=F)
+file.list <- as.character(inputF[,2])
+sample.list <- as.character(inputF[,1])
+
+
+tic("createSnap")
+x.sp.ls = lapply(seq(file.list), function(i){
+    x.sp = createSnap(file=file.list[i], sample=sample.list[i], do.par = TRUE, num.cores=cpus);
+    x.sp
+  })
+names(x.sp.ls) = sample.list;
+x.sp = Reduce(snapRbind, x.sp.ls);
+x.sp@metaData["sample"] = x.sp@sample;
+toc()
+rm(x.sp.ls)
+
+outfname = paste(outF, ".raw.RData",sep="")
+save(x.sp, file=outfname)
+
+pdf(paste(outF, ".raw.sta.pdf",sep=""))
+plotBarcode(x.sp,
+              pdf.file.name=NULL,
+              pdf.width=7,
+              pdf.height=7,
+              col="grey",
+              border="grey",
+              breaks=50
+              );
+dev.off()
+
+
+# filter used cells
+sumF <- fread(sumf, sep="\t", header=T)
+idx <- which(paste(x.sp@sample, x.sp@barcode, sep=".") %in% paste(sumF$sample, sumF$barcode, sep="."))
+x.sp <- x.sp[idx, ]
+
+meta <- join(x.sp@metaData, sumF, by=c("sample","barcode"))
+x.sp@metaData <- meta
+
+x.sp@file <- paste("/projects/ps-renlab/yangli/projects/CEMBA/01.cluster/snap/", x.sp@sample, ".snap", sep="")
+
+outfname = paste(outF, ".sel.RData",sep="")
+save(x.sp, file=outfname)
+
+outmetaf <- paste(outF, ".sel.meta.txt", sep="")
+outmetamx <- x.sp@metaData
+write.table(outmetamx, outmetaf, row.names=F, col.names=T, sep="\t", quote=F)
+
+pdf(paste(outF, ".sel.sta.pdf",sep=""))
+plotBarcode(x.sp,
+              pdf.file.name=NULL,
+              pdf.width=7,
+              pdf.height=7,
+              col="grey",
+              border="grey",
+              breaks=50
+              );
+dev.off()
+
+
+# replace 
+#/mnt/tscc/yangli/projects/CEMBA/01.joint_dat/rs1cemba/snap/
+# to
+#/projects/ps-renlab/yangli/projects/CEMBA/00.data/CEMBA/snap/
+```
+
+
+```{r}
+#x.sp <- get(load(paste(outF, ".sel.RData",sep="")))
+
+## 0. sampling
+sampleSize <- 20000 # close to 100 nuclei from each sample
+
+tic("sampling landmark")
+row.covs.dens <- density(
+    x = x.sp@metaData[,"log10UMI"],
+    bw = 'nrd', adjust = 1
+  );
+
+sampling_prob <- 1 / (approx(x = row.covs.dens$x, y = row.covs.dens$y, xout = x.sp@metaData[,"log10UMI"])$y + .Machine$double.eps);
+set.seed(2021);
+idx.landmark.ds <- sort(sample(x = seq(nrow(x.sp)), size = sampleSize, prob = sampling_prob));
+x.landmark.sp = x.sp[idx.landmark.ds,];
+x.query.sp = x.sp[-idx.landmark.ds,];
+toc()
+
+
+## 1. identify usable features
+tic("addBmatToSnap")
+x.landmark.sp = addBmatToSnap(x.landmark.sp, bin.size=bin_size);
+toc()
+
+tic("makeBinary")
+x.landmark.sp = makeBinary(x.landmark.sp, mat="bmat");
+toc()
+
+tic("filterBins")
+black_list = read.table(black_list);
+black_list.gr = GRanges(
+    black_list[,1], 
+    IRanges(black_list[,2], black_list[,3])
+  );
+idy = queryHits(
+    findOverlaps(x.sp@feature, black_list.gr)
+  );
+if(length(idy) > 0){
+    x.landmark.sp = x.landmark.sp[,-idy, mat="bmat"];
+  };
+x.landmark.sp
+
+chr.exclude = seqlevels(x.landmark.sp@feature)[grep("random|chrM", seqlevels(x.landmark.sp@feature))];
+idy = grep(paste(chr.exclude, collapse="|"), x.landmark.sp@feature);
+if(length(idy) > 0){
+    x.landmark.sp = x.landmark.sp[,-idy, mat="bmat"]
+  };
+x.landmark.sp
+
+bin.cov = log10(Matrix::colSums(x.landmark.sp@bmat)+1);
+pdf(paste(outF, ".BinCoverage.pdf",sep=""))
+hist(
+    bin.cov[bin.cov > 0], 
+    xlab="log10(bin cov)", 
+    main="log10(Bin Cov)", 
+    col="lightblue", 
+    xlim=c(0, 5)
+  );
+dev.off()
+
+bin.cutoff = quantile(bin.cov[bin.cov > 0], 0.95);
+idy = which(bin.cov <= bin.cutoff & bin.cov > 0);
+x.landmark.sp = x.landmark.sp[, idy, mat="bmat"];
+x.landmark.sp
+
+#idx = which(Matrix::rowSums(x.landmark.sp@bmat) > 500);
+#x.landmark.sp = x.landmark.sp[idx,];
+#x.landmark.sp
+toc()
+
+#summarySnap(x.landmark.sp)
+x.landmark.sp
+outfname = paste(outF, ".landmark.RData",sep="")
+save(x.landmark.sp, file=outfname)
+
+#summarySnap(x.query.sp)
+x.query.sp
+outfname = paste(outF, ".query.RData",sep="")
+save(x.query.sp, file=outfname)
+
+
+# 2. embedding
+
+x.landmark.sp <- get(load(paste(outF, ".landmark.RData",sep="")))
+x.query.sp <- get(load(paste(outF, ".query.RData",sep="")))
+
+tic("runDiffusionMaps")
+x.landmark.sp = runDiffusionMaps(
+    obj= x.landmark.sp,
+    input.mat="bmat",
+    num.eigs=50
+  );
+x.landmark.sp@metaData$landmark = 1;
+toc()
+
+
+# 3.extension
+tic("extension")
+num.files = length(sample.list);
+
+registerDoParallel(cpus)
+#x.query.ls <- foreach (i=1:num.files, .combine=snapRbind, .inorder=TRUE) %dopar% {
+x.query.ls <- foreach (i=1:num.files, .inorder=TRUE) %dopar% {
+print(sample.list[i])
+print(i)
+x.query.sub <- x.query.sp[which(x.query.sp@sample == as.character(sample.list[i])), ]
+x.query.sub = addBmatToSnap(x.query.sub, do.par=FALSE, num.cores=cpus, bin.size=bin_size);
+x.query.sub = makeBinary(x.query.sub);
+
+idy = unique(queryHits(findOverlaps(x.query.sub@feature, x.landmark.sp@feature)));
+x.query.sub = x.query.sub[,idy, mat="bmat"];
+x.query.sub = runDiffusionMapsExtension(
+    obj1=x.landmark.sp,
+    obj2=x.query.sub,
+    input.mat="bmat"
+  );
+x.query.sub@metaData$landmark = 0;
+x.query.sub = rmBmatFromSnap(x.query.sub)
+return(x.query.sub)
+}
+closeAllConnections()
+
+x.query.sp = Reduce(snapRbind, x.query.ls);
+x.landmark.sp = rmBmatFromSnap(x.landmark.sp)
+x.sp = snapRbind(x.landmark.sp, x.query.sp);
+x.sp = x.sp[order(x.sp@metaData[,"sample"])];
+toc()
+
+#rm(x.landmark.sp)
+#rm(x.query.sp)
+
+outfname = paste(outF, ".pre.RData",sep="")
+save(x.sp, file=outfname)
+
+outmeta = paste(outF, ".pre.meta.txt",sep="")
+write.table(x.sp@metaData, file=outmeta, sep="\t", quote=F, col.names=T, row.names=F)
+
+
+pdf(paste(outF, ".pre.plotDimResuce.pdf",sep=""))
+plotDimReductElbow(
+    obj=x.sp,
+    point.size=1.5,
+    point.shape=19,
+    point.color="red",
+    point.alpha=1,
+    pdf.file.name=NULL,
+    pdf.height=7,
+    pdf.width=7,
+    labs.title="PCA Elbow plot",
+    labs.subtitle=NULL
+    );
+
+plotDimReductPW(
+    obj=x.sp,
+    eigs.dims=1:pc_num
+    );
+dev.off()
+```
+
+
+
+```{r}
+#x.sp <- get(load(paste(outF, ".pre.RData",sep="")))
+
+# KNN
+tic("runKNN")
+x.sp = runKNN(
+    obj=x.sp,
+    eigs.dims=1:dims,
+    k=100
+    );
+toc()
+
+
+## Clustering
+
+#library("leiden")
+#tic("runCluster_leiden")
+#x.sp = runCluster(
+#    obj=x.sp,
+#    tmp.folder=tempdir(),
+#    louvain.lib="leiden",
+#    resolution = resolution,
+#    seed.use=10
+#    );
+#toc()
+
+## R-igraph
+tic("runCluster_R-igraph")
+x.sp = runCluster(obj=x.sp, 
+    tmp.folder=tempdir(), 
+    louvain.lib="R-igraph",
+    seed.use=10
+    );
+toc()
+
+## Visulization
+
+tic("runViz_umap")
+x.sp = runViz(
+    obj=x.sp, 
+    tmp.folder=tempdir(),
+    dims=2,
+    eigs.dims=1:dims, 
+    method="umap",
+    seed.use=10
+  );
+toc()
+
+tic("runViz_tsne")
+x.sp = runViz(
+    obj=x.sp, 
+    tmp.folder=tempdir(),
+    dims=2,
+    eigs.dims=1:dims, 
+    method="Rtsne",
+    seed.use=10
+  );
+toc()
+
+
+pdf(paste(outF, ".cluster.pdf",sep=""))
+plotViz(
+    obj= x.sp,
+    method="umap",
+    main="Cluster",
+    point.color=x.sp@cluster,
+    point.size=0.2,
+    point.shape=19,
+    text.add=FALSE,
+    text.size=1,
+    text.color="black",
+    down.sample=10000,
+    legend.add=FALSE
+  );
+
+plotViz(
+    obj= x.sp,
+    method="umap", 
+    main="Cluster",
+    point.color=x.sp@cluster, 
+    point.size=0.2, 
+    point.shape=19, 
+    text.add=TRUE,
+    text.size=1,
+    text.color="black",
+    down.sample=10000,
+    legend.add=FALSE
+  );
+
+
+plotFeatureSingle(
+    obj=x.sp,
+    feature.value=x.sp@metaData[,"log10UMI"],
+    method="umap", 
+    main="Read Depth",
+    point.size=0.2, 
+    point.shape=19, 
+    down.sample=10000,
+    quantiles=c(0.01, 0.99)
+  );
+
+plotViz(
+    obj= x.sp,
+    method="umap", 
+    main="Landmark",
+    point.size=0.2, 
+    point.shape=19, 
+    point.color=x.sp@metaData[,"landmark"], 
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+
+dev.off()
+
+## Heretical clustering of the clusters
+# calculate the ensemble signals for each cluster
+#ensemble.ls = lapply(split(seq(length(x.sp@cluster)), x.sp@cluster), function(x){
+#    Matrix::colMeans(x.sp@bmat[x,])
+#    })
+
+# cluster using 1-cor as distance
+#hc = hclust(as.dist(1 - cor(t(do.call(rbind, ensemble.ls)))), method="ward.D2");
+#par(mfrow=c(1,1))
+#pdf(paste(outF, ".hc.pdf",sep=""))
+#plot(hc, hang=-1, xlab="");
+#dev.off()
+
+## Create chromatin lanscape and identify cis-elements for each cluster seperately.
+
+outmetaf <- paste(outF, ".cluster.meta.txt", sep="")
+outmetamx <- cbind(x.sp@sample, x.sp@metaData, x.sp@cluster, x.sp@umap)
+write.table(outmetamx, outmetaf, row.names=F, col.names=T, sep="\t", quote=F)
+
+outfname = paste(outF, ".cluster.RData",sep="")
+save(x.sp, file=outfname)
+
+graph.knn <- x.sp@graph@mat
+
+outfname = paste(outF, ".knn.mmtx", sep="")
+writeMM(graph.knn,file=outfname)
+
+```
+
+
+
+# plot markers
+```{r}
+x.sp <- get(load(paste(outF, ".cluster.RData", sep="")))
+
+set.seed(2021)
+x.sp.sub <- x.sp[sample(1:nrow(x.sp),5000), ]
+
+x.sp.sub <- addGmatToSnap(x.sp.sub, do.par = T, num.cores = 4)
+
+x.sp.sub = runKNN(
+    obj=x.sp.sub,
+    eigs.dims=1:20,
+    k=50
+);
+
+
+# normalize the cell-by-gene matrix
+x.sp.sub = scaleCountMatrix(
+    obj=x.sp.sub, 
+    cov=x.sp.sub@metaData$UQ + 1,
+    mat="gmat",
+    method = "RPM"
+  );
+
+# smooth the cell-by-gene matrix
+x.sp.sub = runMagic(
+    obj=x.sp.sub,
+    input.mat="gmat",
+    step.size=3
+  );
+
+
+geneF <- read.table(genef, sep="\t", header=F)
+marker.genes <- geneF[, 1]
+marker.genes <- marker.genes[marker.genes %in% colnames(x.sp.sub@gmat)]
+
+pdf(paste(outF, ".umap2marker.pdf",sep=""))
+par(mfrow = c(2, 2));
+for(i in 1:length(marker.genes)){
+    plotFeatureSingle(
+        obj=x.sp.sub,
+        feature.value=x.sp.sub@gmat[, marker.genes[i]],
+        method="umap", 
+        main=marker.genes[i],
+        point.size=0.1, 
+        point.shape=19, 
+        down.sample=5000,
+        quantiles=c(0.01, 0.99)
+    )}
+dev.off()
+
+
+```
+
+# plot attr in cluster
+```{r}
+outF <- "hba.cortex"
+RDataF <- "./hba.cortex.cluster.RData"
+annof <- "./hba.cortex.cell2major.txt"
+
+x.sp <- get(load(RDataF))
+
+annoF <- read.table(annof, sep="\t", header=T)
+x.sp@metaData <- join(x.sp@metaData, annoF, by=c("sample","barcode"))
+
+outfname = paste(outF, ".cluster2major.RData",sep="")
+save(x.sp, file=outfname)
+
+outmetaf <- paste(outF, ".cluster2major.meta.txt", sep="")
+outmetamx <- cbind(x.sp@metaData, x.sp@umap)
+write.table(outmetamx, outmetaf, row.names=F, col.names=T, sep="\t", quote=F)
+
+metaData <- x.sp@metaData
+
+pdf(paste(outF, ".umap2attr.pdf",sep=""))
+plotViz(
+    obj= x.sp,
+    method="umap",
+    main="Cluster",
+    point.color=x.sp@metaData$MajorType,
+    point.size=0.2,
+    point.shape=19,
+    text.add=FALSE,
+    text.size=1,
+    text.color="black",
+    down.sample=10000,
+    legend.add=FALSE
+  );
+
+plotViz(
+    obj= x.sp,
+    method="umap", 
+    main="Cluster",
+    point.color=x.sp@metaData$MajorType, 
+    point.size=0.2, 
+    point.shape=19, 
+    text.add=TRUE,
+    text.size=1,
+    text.color="black",
+    down.sample=10000,
+    legend.add=FALSE
+  );
+
+plotFeatureSingle(
+    obj=x.sp,
+    feature.value=x.sp@metaData[,"log10UMI"],
+    method="umap", 
+    main="Read Depth",
+    point.size=0.2, 
+    point.shape=19, 
+    down.sample=10000,
+    quantiles=c(0.01, 0.99)
+  );
+
+ggplot(metaData, aes(factor(MajorType), log10UMI, fill=factor(MajorType))) + 
+  geom_violin() + 
+  geom_boxplot(width=0.1, alpha=0.2) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+plotFeatureSingle(
+    obj=x.sp,
+    feature.value=x.sp@metaData[,"TSSe"],
+    method="umap", 
+    main="TSS enrichment",
+    point.size=0.2, 
+    point.shape=19, 
+    down.sample=10000,
+    quantiles=c(0.01, 0.99)
+  );
+
+ggplot(metaData, aes(factor(MajorType), TSSe, fill=factor(MajorType))) + 
+  geom_violin() + 
+  geom_boxplot(width=0.1, alpha=0.2) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+
+plotViz(
+    obj= x.sp,
+    method="umap", 
+    main="Landmark",
+    point.size=0.2, 
+    point.shape=19, 
+    point.color=x.sp@metaData[,"landmark"], 
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+plotViz(
+    obj= x.sp,
+    method="umap", 
+    main="region",
+    point.size=0.2, 
+    point.shape=19, 
+    point.color=x.sp@metaData[,"region"], 
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+dat <- table(metaData[,c("MajorType", "region")])
+dat <- melt(dat)
+
+nb.cols <- length(unique(dat$region))
+mycolors <- colorRampPalette(brewer.pal(12, "Paired"))(nb.cols)
+
+ggplot(dat, aes(x=MajorType, y = value, fill=region)) + 
+  geom_bar(position="fill", stat="identity") +
+  scale_fill_manual(values = mycolors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+plotViz(
+    obj= x.sp,
+    method="umap",
+    main="Tech replicate",
+    point.size=0.2,
+    point.shape=19,
+    point.color=x.sp@metaData[,"techRep"],
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+dat <- table(metaData[,c("MajorType", "techRep")])
+dat <- melt(dat)
+
+ggplot(dat, aes(x=MajorType, y = value, fill=factor(techRep))) + 
+  geom_bar(position="fill", stat="identity") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+plotViz(
+    obj= x.sp,
+    method="umap",
+    main="Donor",
+    point.size=0.2,
+    point.shape=19,
+    point.color=x.sp@metaData[,"donor"],
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+dat <- table(metaData[,c("MajorType", "donor")])
+dat <- melt(dat)
+
+ggplot(dat, aes(x=MajorType, y = value, fill=factor(donor))) + 
+  geom_bar(position="fill", stat="identity") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+dev.off()
+
+```
+
+
+# plot
+```{r}
+outF <- "hba.cortex"
+RDataF <- paste(outF, ".cluster2major.RData",sep="")
+x.sp <- get(load(RDataF))
+
+dat <- cbind(x.sp@metaData, x.sp@umap)
+colnames(dat) <- gsub("-","",colnames(dat))
+set.seed(2021)
+dat.rdm <- dat[sample(1:nrow(dat), 10000), ]
+
+
+colourCount = length(unique(dat.rdm$region))
+getPalette = colorRampPalette(brewer.pal(9, "Set1"))
+
+p <- ggplot(dat.rdm, aes(x=umap1, y = umap2, color=factor(region))) + 
+  geom_point(size=5, shape=15)+
+  theme_classic() +
+  scale_color_manual(values=getPalette(colourCount)) +
+  theme(legend.position="bottom") + guides(color=guide_legend(nrow=4, byrow=TRUE))
+ggsave("foo.pdf", p, width = 8, height = 6)
+
+p <- ggplot(dat.rdm, aes(x=umap1, y = umap2, color=factor(region))) + 
+  geom_point(size=0.5)+
+  theme_classic() +
+  scale_color_manual(values=getPalette(colourCount)) +
+  theme(legend.position="bottom")
+
+ggsave(paste(outF, ".cluster2region.umap.pdf",sep=""), p, width = 6, height = 7)
+
+
+colourCount = length(unique(dat.rdm$MajorType))
+getPalette = colorRampPalette(brewer.pal(9, "Paired"))
+
+p <- ggplot(dat.rdm, aes(x=umap1, y = umap2, color=factor(MajorType))) + 
+  geom_point(size=1)+
+  theme_classic() +
+  scale_color_manual(values=getPalette(colourCount))
+ggsave(paste(outF, ".cluster2major.umap.pdf",sep=""), p, width = 6, height = 6)
+
+```
+
+
+# annotation
+# plot attr in cluster
+```{r}
+outF <- "hba.cortex"
+RDataF <- "./hba.cortex.cluster.RData"
+annof <- "./hba.cortex.cell2anno.txt"
+
+x.sp <- get(load(RDataF))
+
+annoF <- read.table(annof, sep="\t", header=T)
+x.sp@metaData <- join(x.sp@metaData, annoF, by=c("sample","barcode"))
+
+outfname = paste(outF, ".cell2anno.RData",sep="")
+save(x.sp, file=outfname)
+
+outmetaf <- paste(outF, ".cell2anno.meta.txt", sep="")
+outmetamx <- cbind(x.sp@metaData, x.sp@umap)
+write.table(outmetamx, outmetaf, row.names=F, col.names=T, sep="\t", quote=F)
+
+col2anno <- fread("./hba.cortex.color2anno.txt", sep="\t", header=T)
+x.sp@metaData <- join(x.sp@metaData, col2anno[,2:4], by="MajorType")
+
+col2rgs <- fread("./hba.cortex.color2region.txt", sep="\t", header=T)
+x.sp@metaData <- join(x.sp@metaData, col2rgs, by="region")
+
+metaData <- cbind(x.sp@metaData, x.sp@umap)
+colnames(metaData) <- gsub("-","",colnames(metaData))
+metaData <- metaData[complete.cases(metaData), ]
+
+metaData.used <- metaData[sample(1:nrow(metaData), 10000),]
+
+
+pdf(paste(outF, ".umap2anno.pdf",sep=""), width = 6, height = 4)
+# color by type
+colmap <- unique(metaData[,c("MajorType", "MajorTypeColor")])
+colmap <- colmap[complete.cases(colmap), ]
+metaData.used$MajorType <- factor(metaData.used$MajorType, levels = colmap$MajorType)
+
+ggplot(metaData.used, aes(umap1, umap2, color=MajorType)) + 
+  geom_point(size=0.5) +
+  theme_classic() +
+  scale_color_manual(breaks = colmap$MajorType, values = colmap$MajorTypeColor)
+
+# color by region
+colmap <- unique(metaData[,c("BrainRegion", "BrainRegionColor")])
+colmap <- colmap[complete.cases(colmap), ]
+metaData.used$BrainRegion <- factor(metaData.used$BrainRegion, levels = colmap$BrainRegion)
+
+ggplot(metaData.used, aes(umap1, umap2, color=BrainRegion)) + 
+  geom_point(size=0.5) +
+  theme_classic() +
+  scale_color_manual(breaks = colmap$BrainRegion, values = colmap$BrainRegionColor)
+
+# color by dissect
+colmap <- unique(metaData[,c("DissectRegion", "DissectRegionColor")])
+colmap <- colmap[complete.cases(colmap), ]
+metaData.used$DissectRegion <- factor(metaData.used$DissectRegion, levels = colmap$DissectRegion)
+
+ggplot(metaData.used, aes(umap1, umap2, color=DissectRegion)) + 
+  geom_point(size=0.5) +
+  theme_classic() +
+  scale_color_manual(breaks = colmap$DissectRegion, values = colmap$DissectRegionColor)
+
+dev.off()
+
+
+pdf(paste(outF, ".umap2attr.pdf",sep=""))
+plotViz(
+    obj= x.sp,
+    method="umap",
+    main="Cluster",
+    point.color=x.sp@metaData$MajorType,
+    point.size=0.2,
+    point.shape=19,
+    text.add=FALSE,
+    text.size=1,
+    text.color="black",
+    down.sample=10000,
+    legend.add=FALSE
+  );
+
+plotViz(
+    obj= x.sp,
+    method="umap", 
+    main="Cluster",
+    point.color=x.sp@metaData$MajorType, 
+    point.size=0.2, 
+    point.shape=19, 
+    text.add=TRUE,
+    text.size=1,
+    text.color="black",
+    down.sample=10000,
+    legend.add=FALSE
+  );
+
+plotFeatureSingle(
+    obj=x.sp,
+    feature.value=x.sp@metaData[,"log10UMI"],
+    method="umap", 
+    main="Read Depth",
+    point.size=0.2, 
+    point.shape=19, 
+    down.sample=10000,
+    quantiles=c(0.01, 0.99)
+  );
+
+ggplot(metaData, aes(factor(MajorType), log10UMI, fill=factor(MajorType))) + 
+  geom_violin() + 
+  geom_boxplot(width=0.1, alpha=0.2) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+plotFeatureSingle(
+    obj=x.sp,
+    feature.value=x.sp@metaData[,"TSSe"],
+    method="umap", 
+    main="TSS enrichment",
+    point.size=0.2, 
+    point.shape=19, 
+    down.sample=10000,
+    quantiles=c(0.01, 0.99)
+  );
+
+ggplot(metaData, aes(factor(MajorType), TSSe, fill=factor(MajorType))) + 
+  geom_violin() + 
+  geom_boxplot(width=0.1, alpha=0.2) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+
+plotViz(
+    obj= x.sp,
+    method="umap", 
+    main="Landmark",
+    point.size=0.2, 
+    point.shape=19, 
+    point.color=x.sp@metaData[,"landmark"], 
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+plotViz(
+    obj= x.sp,
+    method="umap", 
+    main="region",
+    point.size=0.2, 
+    point.shape=19, 
+    point.color=x.sp@metaData[,"region"], 
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+dat <- table(metaData[,c("MajorType", "region")])
+dat <- melt(dat)
+
+nb.cols <- length(unique(dat$region))
+mycolors <- colorRampPalette(brewer.pal(12, "Paired"))(nb.cols)
+
+ggplot(dat, aes(x=MajorType, y = value, fill=region)) + 
+  geom_bar(position="fill", stat="identity") +
+  scale_fill_manual(values = mycolors) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+plotViz(
+    obj= x.sp,
+    method="umap",
+    main="Tech replicate",
+    point.size=0.2,
+    point.shape=19,
+    point.color=x.sp@metaData[,"techRep"],
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+dat <- table(metaData[,c("MajorType", "techRep")])
+dat <- melt(dat)
+
+ggplot(dat, aes(x=MajorType, y = value, fill=factor(techRep))) + 
+  geom_bar(position="fill", stat="identity") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+plotViz(
+    obj= x.sp,
+    method="umap",
+    main="Donor",
+    point.size=0.2,
+    point.shape=19,
+    point.color=x.sp@metaData[,"donor"],
+    text.add=FALSE,
+    text.size=1.5,
+    text.color="black",
+    down.sample=10000,
+    legend.add=TRUE
+  );
+
+dat <- table(metaData[,c("MajorType", "donor")])
+dat <- melt(dat)
+
+ggplot(dat, aes(x=MajorType, y = value, fill=factor(donor))) + 
+  geom_bar(position="fill", stat="identity") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+dev.off()
+
+```
