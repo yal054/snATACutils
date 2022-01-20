@@ -8,7 +8,7 @@ parser.add_argument('-r', '--resolution', type=float, dest="resolution", help='r
 parser.add_argument('--u1', type=float, dest="u1", default=0.05, help='left interval cutoff of CDF')
 parser.add_argument('--u2', type=float, dest="u2", default=0.95, help='right interval cutoff of CDF')
 parser.add_argument('-n', type=int, dest="N", help='iteration of N time')
-#parser.add_argument('-c', '--cpu', type=int, dest="cpu", default=1, help='# of cpu')
+parser.add_argument('-s', '--sample', type=int, dest="sample", default=5000, help='sample # of cell')
 parser.add_argument('-o', '--out', type=str, dest="output", help='prefix of output file')
 
 args = parser.parse_args()
@@ -19,7 +19,7 @@ import igraph as ig
 from scipy.io import mmread
 from scipy import sparse
 from time import perf_counter as pc
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, lil_matrix
 from scipy.sparse import save_npz
 import numpy as np
 import itertools
@@ -39,6 +39,7 @@ import fastcluster as fc
 def cal_connectivity(P):
     """ calculate connectivity matrix """
     #print("=== calculate connectivity matrix ===")
+    #connectivity_mat = lil_matrix((len(P), len(P)))
     #connectivity_mat = csr_matrix((len(P), len(P)))
     connectivity_mat = np.zeros((len(P), len(P)))
     classN = max(P)
@@ -149,7 +150,7 @@ def run():
     inf = args.input
     reso = args.resolution
     N = args.N
-#    ncpu = args.cpu
+    sampleN = args.sample
     u1 = args.u1
     u2 = args.u2
     outf = args.output
@@ -157,12 +158,7 @@ def run():
     knn = mmread(inf)
     knn = knn.tocsr()
     dimN = knn.shape[0]
-    if dimN > 5000:
-        import random
-        random.seed(2020)
-        idxy = random.sample(range(dimN), 5000)
-        knn = knn[idxy, :]
-        knn = knn[:, idxy] # downsample (5,000 observations)
+
     vcount = max(knn.shape)
     sources, targets = knn.nonzero()
     edgelist = list(zip(sources.tolist(), targets.tolist()))
@@ -170,13 +166,24 @@ def run():
 
     # generate consensus matrix    
     dims = knn.shape[0]
-    consensus = csr_matrix((dims, dims))
+    if dims > sampleN:
+        dims = sampleN
+        import random
+        random.seed(2022)
+        idxy = random.sample(range(dimN), sampleN)
+        idxy = sorted(idxy)
+    consensus = csr_matrix((dims, dims))    
+    
     print("=== calculate connectivity matrix ===")
     for seed in range(N):
         start_t =pc()
         partition = la.find_partition(g, la.RBConfigurationVertexPartition, resolution_parameter = reso, seed = seed)
         part_membership = partition.membership
-        consensus += cal_connectivity(part_membership)
+        part_membership = np.array(part_membership)
+        if len(part_membership) > sampleN:
+            part_membership = part_membership[idxy] # downsample (10,000 observations)
+        outs = cal_connectivity(part_membership)
+        consensus += outs
         end_t = pc()
         print('seed ', seed, ' used (secs): ', end_t - start_t)
     consensus /= N
