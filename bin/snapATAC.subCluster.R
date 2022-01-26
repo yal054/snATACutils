@@ -14,6 +14,7 @@ parser$add_argument("--cpu", default = 1, help="# of cpus [default %(default)s]"
 parser$add_argument("--black_list", default="/projects/ps-renlab/yangli/genome/mm10/mm10.blacklist.bed.gz", help="black list file")
 parser$add_argument("--bin_size", default = 5000, help="binSize to use [default %(default)s]")
 parser$add_argument("--resolution", default = 0.5, help="resulution for python-louvain [default %(default)s]")
+parser$add_argument("--path_to_snap", default = NULL, help="path to snaps [default %(default)s]")
 #parser$add_argument("--path_to_snaptools", default = "/home/yangli1/apps/anaconda3/bin/snaptools", help="path to snaptools [default %(default)s]")
 #parser$add_argument("--resolution", default = 0.5, help="resulution for python-louvain [default %(default)s]")
 parser$add_argument("-o", "--output", required=TRUE, help="output file prefix")
@@ -37,11 +38,21 @@ dims = as.numeric(args$pc_dim)
 bin_size = as.numeric(args$bin_size)
 cpus = as.numeric(args$cpu)
 resolution = as.numeric(args$resolution)
+path_to_snap = args$path_to_snap
 #path_to_snaptools = args$path_to_snaptools
 outF = args$output
 
 #--------------------------------
 x.sp <- get(load(RDataF))
+
+if(is.null(path_to_snap)){
+print("using original path to snap")
+}else{
+print("changing the path to snap")
+x.sp@file <- paste(path_to_snap, x.sp@sample, ".snap", sep="")
+}
+
+
 cnt2sample <- table(x.sp@sample)
 sampleName <- names(which(cnt2sample<=10))
 idx <- which(x.sp@sample %in% sampleName)
@@ -297,7 +308,7 @@ tic("runKNN")
 x.sp = runKNN(
     obj=x.sp,
     eigs.dims=1:dims,
-    k=15
+    k=50
     );
 toc()
 
