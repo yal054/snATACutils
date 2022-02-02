@@ -39,8 +39,7 @@ dims = as.numeric(args$pc_dim)
 bin_size = as.numeric(args$bin_size)
 cpus = as.numeric(args$cpu)
 resolution = as.numeric(args$resolution)
-vars <- args$vars
-print(vars)
+vars <- as.character(args$vars)
 path_to_snap = args$path_to_snap
 #path_to_snaptools = args$path_to_snaptools
 outF = args$output
@@ -309,7 +308,6 @@ dev.off()
 # correction
 if(!is.null(vars)){
 tic("runHarmony")
-vars <- as.character(vars)
 x.sp = runHarmony(
     obj=x.sp,
     eigs.dim=1:dims,
