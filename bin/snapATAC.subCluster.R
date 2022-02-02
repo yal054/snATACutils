@@ -8,13 +8,14 @@ parser <- ArgumentParser()
 # specify our desired options
 # by default ArgumentParser will add an help option
 parser$add_argument("-i", "--input", required=TRUE, help="load preprocessed RData")
+parser$add_argument("--path_to_snap", default = NULL, help="path to snaps [default %(default)s]")
 parser$add_argument("--pc_num", default = 50, help="num of PCA components [default %(default)s]")
 parser$add_argument("-d", "--pc_dim", default = 20, help="num of PCA dims used for clustering [default %(default)s]")
 parser$add_argument("--cpu", default = 1, help="# of cpus [default %(default)s]")
 parser$add_argument("--black_list", default="/projects/ps-renlab/yangli/genome/mm10/mm10.blacklist.bed.gz", help="black list file")
 parser$add_argument("--bin_size", default = 5000, help="binSize to use [default %(default)s]")
 parser$add_argument("--resolution", default = 0.5, help="resulution for python-louvain [default %(default)s]")
-parser$add_argument("--path_to_snap", default = NULL, help="path to snaps [default %(default)s]")
+parser$add_argument("--vars", default = NULL, nargs='+', help="list of variables for correction")
 #parser$add_argument("--path_to_snaptools", default = "/home/yangli1/apps/anaconda3/bin/snaptools", help="path to snaptools [default %(default)s]")
 #parser$add_argument("--resolution", default = 0.5, help="resulution for python-louvain [default %(default)s]")
 parser$add_argument("-o", "--output", required=TRUE, help="output file prefix")
@@ -38,6 +39,7 @@ dims = as.numeric(args$pc_dim)
 bin_size = as.numeric(args$bin_size)
 cpus = as.numeric(args$cpu)
 resolution = as.numeric(args$resolution)
+vars <- as.character(args$vars)
 path_to_snap = args$path_to_snap
 #path_to_snaptools = args$path_to_snaptools
 outF = args$output
@@ -77,7 +79,7 @@ row.covs.dens <- density(
   );
 
 sampling_prob <- 1 / (approx(x = row.covs.dens$x, y = row.covs.dens$y, xout = x.sp@metaData[,"log10UQ"])$y + .Machine$double.eps);
-set.seed(2021);
+set.seed(2022);
 idx.landmark.ds <- sort(sample(x = seq(nrow(x.sp)), size = sampleSize, prob = sampling_prob));
 x.landmark.sp = x.sp[idx.landmark.ds,];
 # remove single cell from sampels
@@ -301,6 +303,20 @@ plotDimReductPW(
 dev.off()
 
 }
+
+
+# correction
+if(!is.null(vars)){
+tic("runHarmony")
+x.sp = runHarmony(
+    obj=x.sp,
+    eigs.dim=1:dims,
+    meta_data=x.sp@metaData,
+    vars_use = vars
+  )
+toc()
+}
+
 
 # 4. UMAP and Cluster
 
