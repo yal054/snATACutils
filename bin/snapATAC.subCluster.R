@@ -57,7 +57,7 @@ x.sp@file <- paste(path_to_snap, x.sp@sample, ".snap", sep="")
 
 
 cnt2sample <- table(x.sp@sample)
-sampleName <- names(which(cnt2sample<=10))
+sampleName <- names(which(cnt2sample<=1))
 idx <- which(x.sp@sample %in% sampleName)
 if(length(idx)>=1){
 x.sp <- x.sp[-idx, ]

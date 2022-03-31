@@ -26,7 +26,7 @@ def run():
     end_time = pc()
     print('Used (secs): ', end_time - start_time)
 
-def generate_bams(clusterf, dirPrefix, outPrefix):
+def generate_bams(clusterf, dirPrefix,  outPrefix):
     clust_dat = pd.read_csv(clusterf, sep="\t")
     clust_dat["uniq_barcode"] = clust_dat[['sample', 'barcode']].apply(lambda x: '.'.join(x), axis=1)
     clust_dat_dict = pd.Series(clust_dat["cluster"].values,index=clust_dat["uniq_barcode"]).to_dict()
@@ -42,7 +42,7 @@ def generate_bams(clusterf, dirPrefix, outPrefix):
         generate_bam_worker(clust_dat_dict, outf_dict, sample, dirPrefix, outPrefix)
     else:
         for sample in sample_id:
-             generate_bam_worker(clust_dat_dict, outf_dict, sample, dirPrefix, outPrefix)
+            generate_bam_worker(clust_dat_dict, outf_dict, sample, dirPrefix, outPrefix)
 
 def generate_bam_worker(clust_dat_dict, outf_dict, sample, dirPrefix, outPrefix):
     print("extract reads from", sample)
