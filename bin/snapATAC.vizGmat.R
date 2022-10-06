@@ -17,6 +17,7 @@ args <- parser$parse_args()
 
 # use new version
 suppressPackageStartupMessages(library("SnapATAC"));
+suppressPackageStartupMessages(library("RANN"))
 suppressPackageStartupMessages(library("GenomicRanges"));
 suppressPackageStartupMessages(library("plyr"));
 library("tictoc")
@@ -33,6 +34,18 @@ x.sp <- get(load(RDataF))
 toc()
 
 #--------------------------
+# sampling
+set.seed(2022)
+if(nrow(x.sp) > num){
+x.sp <- x.sp[sample(1:nrow(x.sp), num)]
+}
+sample.lst <- names(which(table(x.sp@sample)==1))
+if(length(sample.lst)>=1){
+idx <- which(x.sp@sample %in% sample.lst)
+x.sp <- x.sp[-idx, ]
+}
+
+#--------------------------
 # load gmat
 tic("addGmat")
 x.sp <- addGmatToSnap(x.sp)
@@ -42,15 +55,10 @@ save(x.sp, file=paste(outF, ".Gmat.RData", sep=""))
 
 #----------------------------------
 # norm and smooth
-set.seed(2021)
-if(nrow(x.sp) > num){
-x.sp <- x.sp[sample(1:nrow(x.sp), num)]
-}
-
 tic("runKNN")
 x.sp = runKNN(
     obj=x.sp,
-    eigs.dims=1:20,
+    eigs.dims=1:length(x.sp@smat@sdev),
     k=50
 )
 toc()

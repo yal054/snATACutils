@@ -82,6 +82,13 @@ plot(p)
 dev.off()
 
 x.sp@metaData <- metaF
+
+metaF <- x.sp@metaData
+outfname = paste(outF, ".raw.meta.txt",sep="")
+fwrite(metaF, outfname, sep="\t", col.names=T, row.names=F, quote=F)
+
+# filtering
+
 idx.sel <- which(metaF$UQ >= fragment_num & metaF$TSSe >= tsse_cutoff)
 x.sp = x.sp[idx.sel,];
 toc()

@@ -8,8 +8,10 @@ parser <- ArgumentParser()
 # specify our desired options
 # by default ArgumentParser will add an help option
 parser$add_argument("-i", "--input", required=TRUE, help="load clustered RData")
-parser$add_argument("-g", "--gset", default="/projects/ps-renlab/yangli/genome/mm10/gencode.vM16.gene.bed", help="gene annotation in bed format")
-parser$add_argument("-a", "--attr", required=TRUE, help="attribute's column name used for regression: MajorRegion | SubType | MajorType")
+parser$add_argument("-p", "--pset", required=TRUE, help="column name for used peak set: subclass | celltype | MajorType | SubType")
+parser$add_argument("--path_to_snap", default="/projects/ps-renlab/yangli/projects/HBA/03.peakcall/snap/", help="path to snap files")
+parser$add_argument("--path_to_peak", default="/projects/ps-renlab/yangli/projects/CEMBA/01.joint_dat/rs1cemba/tracks/cCREs/", help="path to peak set for each cluster")
+parser$add_argument("-a", "--attr", required=TRUE, help="attribute's column name used for regression: region | subclass | celltype | MajorRegion | SubRegion | DissectionRegion | SubType")
 parser$add_argument("--min_num", default=100, help="min # of cell in attr [default %(default)s]")
 parser$add_argument("--dn_num", required=FALSE, default=NULL, help="downsample # of cell in attr [default %(default)s]")
 parser$add_argument("-m", "--model", default = "negbinomial", help="model used for fitting: negbinomial | binomial | quasipoisson [default %(default)s]")
@@ -30,7 +32,9 @@ suppressPackageStartupMessages(library("doParallel"))
 library("tictoc")
 
 RDataF = args$input
-gset = args$gset
+pset = args$pset
+path_to_peak = args$path_to_peak
+path_to_snap = args$path_to_snap
 attr = args$attr
 min_num = as.numeric(args$min_num)
 dn_num = as.numeric(args$dn_num)
@@ -41,19 +45,18 @@ outF = args$output
 #---------
 # init
 x.sp <- get(load(RDataF))
-
-#---------
-# filtering min # of cell
-cnt2attr <- table(x.sp@metaData[,attr])
-attr.sel <- names(which(cnt2attr > min_num))
-idx <- which(x.sp@metaData[,attr] %in% attr.sel)
+attr.ncell <- table(x.sp@metaData[, attr])
+sel.ncell <- names(attr.ncell[attr.ncell >= min_num])
+idx <- which(x.sp@metaData[, attr] %in% sel.ncell)
+if(length(idx) < nrow(x.sp)){
 x.sp <- x.sp[idx, ]
+}
 
 x.sp@metaData$replicate <- x.sp@metaData$donor
-
+ 
 #-----------------
-# downsample 
-if( !is.null(dn_num)){ 
+# downsample
+if( !is.null(dn_num)){
 
 attr.list <- unique(x.sp@metaData[,attr])
 
@@ -65,7 +68,7 @@ for(a in attr.list){
        idx.sel <- sample(idx, dn_num)
    }else{
        idx.sel <- idx
-   }   
+   }
    idx.list <- c(idx.list, idx.sel)
 }
 
@@ -73,59 +76,86 @@ idx.list <- sort(idx.list)
 x.sp <- x.sp[idx.list, ]
 }
 
+
 #-----------
 # load matrix
+x.sp@file <- paste0(path_to_snap, x.sp@sample, ".snap")
+
 sample.sel <- which(table(x.sp@sample)<=10)
 if(length(sample.sel)>0){
 idx <- which(x.sp@sample %in% names(sample.sel))
 x.sp <- x.sp[-idx, ]
 }
 
-
 if( dim(x.sp@gmat)[1] == 0 ){
-x.sp <- addGmatToSnap(x.sp)
+x.sp <- addPmatToSnap(x.sp)
 }
 
 save(x.sp, file=paste(outF, "snapObj.RData", sep="."))
+
+#----------------
+# filter used peaks
+type.lst <- unique(x.sp@metaData[,pset])
+
+if(length(type.lst)==1){
+inf = list.files(path = path_to_peak, pattern = paste("*", "\\.", type.lst, ".bed",sep=""), full.names=T )
+peak.lst <- fread(inf, sep="\t", header=F);
+}else{
+peak.lst <- list()
+for(i in type.lst){
+  inf = list.files(path = path_to_peak, pattern = paste("*", "\\.", i, ".bed",sep=""), full.names=T )
+  inp = fread(inf, sep="\t", header=F);
+  peak.lst[[i]] <- inp
+}
+peak.lst <- do.call(rbind, peak.lst)
+peak.lst <- unique(peak.lst)
+}
+
+peak.gr = GRanges(
+    peak.lst[[1]],
+    IRanges(peak.lst[[2]], peak.lst[[3]])
+  );
+peak.gr$peak <- peak.lst[[4]]
 
 #-----------------------
 # construct cds obj
 cell_meta <- x.sp@metaData
 rownames(cell_meta) <- cell_meta$cellID
 
-ganno <- fread(gset, sep="\t", header=F)
-ganno <- ganno[,c(4,7,8)]
-colnames(ganno) <- c("gencode", "id", "type")
-ganno <- ganno[!duplicated(ganno$id), ]
+peak_anno <- data.frame(id=as.character(x.sp@peak))
+rownames(peak_anno) <- peak_anno$id
+peak_anno$gene_short_name <- paste("peak", 1:nrow(peak_anno), sep="_")
 
-gene_anno <- data.frame(id=colnames(x.sp@gmat))
-gene_anno$gene_short_name <- gene_anno$id
-gene_anno <- join(gene_anno, ganno, by="id")
-rownames(gene_anno) <- gene_anno$id
-gene_anno <- as.data.frame(gene_anno)
-
-gene_mat <- Matrix::t(x.sp@gmat)
-colnames(gene_mat) <- cell_meta$cellID
-rownames(gene_mat) <- as.character(gene_anno$id)
-
+peak_mat <- t(x.sp@pmat)
+colnames(peak_mat) <- cell_meta$cellID
+rownames(peak_mat) <- peak_anno$peak
 if(model == "binomial"){
-  gene_mat@x[gene_mat@x > 1] <- 1 # binarize peak mat
+peak_mat@x[peak_mat@x > 1] <- 1 # binarize peak mat
 }
 
-cds <- new_cell_data_set(gene_mat,
+idx <- which(peak_anno$gene_short_name %in% peak.gr$peak)
+idy = queryHits(
+    findOverlaps(x.sp@peak, peak.gr)
+  );
+if(identical(idx, idy)){
+  peak_mat <- peak_mat[idx, ]
+  peak_anno <- peak_anno[idx, ]
+}
+
+cds <- new_cell_data_set(peak_mat,
                          cell_metadata = cell_meta,
-                         gene_metadata = gene_anno)
+                         gene_metadata = peak_anno)
 
 cds <- detect_genes(cds)
 
 save(cds, file=paste(outF, "cdsObj.RData", sep="."))
 rm(x.sp)
-rm(gene_mat)
+rm(peak_mat)
 rm(cell_meta)
-rm(gene_anno)
+rm(peak_anno)
 
 #-----------------------
-# diff gene
+# diff peak
 # u: total proportion of cells that are accessible at the ith site
 # a: the membership of the jth cell in the cluster
 # b: log10(total number of sites observed as accessible for the jth cell)
@@ -174,9 +204,6 @@ closeAllConnections()
 lr_models <- do.call(rbind, lr_models.ls)
 lr_models.df <- as.data.frame(lr_models)
 lr_models.df$q_value <- p.adjust(lr_models.df$p_value, method = "BH")
-
-lr_models.df$id <- rowData(cds)$gencode
-lr_models.df$type <- rowData(cds)$type
 
 fwrite(lr_models.df, file=paste(outF, "LRtest.out.tsv", sep="."), quote =F, col.names = T, row.names = F, sep="\t")
 
