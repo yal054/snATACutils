@@ -60,7 +60,7 @@ def generate_bam_worker(clust_dat_dict, outf_dict, sample, dirPrefix, outPrefix)
             osam.write(b)
         else:
             continue
-    osam.close()
+    #osam.close()
     bamF.close()
 
 if __name__ == "__main__":
