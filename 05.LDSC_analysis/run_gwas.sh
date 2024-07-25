@@ -37,7 +37,7 @@ cat data/*.CREs.reciprocalToHg19.bed | cut -f 4 | sort | uniq | wc -l
 cd data
 ln -s ../../../ovlpPeaks/liftOver/rs1cemba.50.mm10ToHg19.map2mm10.bed rs1cemba.CREs.reciprocalToHg19.bed
 
-# using homology peaks in default cutoff
+# using homology peaks with default cutoff
 cd $path0
 mkdir pbs_log pbs_script ld_score
 
@@ -117,6 +117,15 @@ do
     j=$(basename $i)
     printf "${j}\tld_score/${j}.,ld_score/rs1cemba.\n"
 done > rs1cemba.ldcts
+
+# the "rs1cemba.ldcts" should be a plain file with two columns, 
+# [cell type name]    ld_score/[PREFIX_1],ld_score/[PREFIX_2]
+# 1st column is the cell type name, 
+# 2nd column is prefix of two ld_scores files seperated by ",", which will be used for downstream regression analysis.
+# for example:
+# GABA.CRc    ld_score/GABA.CRc.,ld_score/rs1cemba.
+# Glutamate.GC    ld_score/Glutamate.GC.,ld_score/rs1cemba.
+# NonN.Opc    ld_score/NonN.Opc.,ld_score/rs1cemba.
 
 cts_name=rs1cemba
 DIR=/projects/ps-renlab/yangli/projects/CEMBA/01.joint_dat/rs1cemba/gwas/L2cluster
